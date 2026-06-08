@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>CETARA — Brand Financial OS</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#080808;--s1:#111;--s2:#171717;--s3:#1e1e1e;
+  --b1:#2a2a2a;--b2:#363636;
+  --tx:#f0ece3;--t2:#888;--t3:#444;
+  --gr:#00e67a;--gd:rgba(0,230,122,.1);--gd2:rgba(0,230,122,.05);
+  --rd:#ff4757;--yl:#ffc048;--bl:#4dabff;
+  --r:12px;--rs:8px;--tr:.18s ease;
+  --fd:'DM Serif Display',serif;--fb:'DM Sans',sans-serif;--fm:'JetBrains Mono',monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{height:100%;background:var(--bg);color:var(--tx);font-family:var(--fb);font-size:14px;}
+.screen{display:none;min-height:100vh;}
+.screen.active{display:flex;}
+
+/* ── PIN LOGIN ── */
+#screen-pin{align-items:center;justify-content:center;flex-direction:column;gap:0;}
+.pin-wrap{width:100%;max-width:400px;padding:40px 32px;display:flex;flex-direction:column;align-items:center;}
+.pin-logo{font-family:var(--fd);font-size:28px;letter-spacing:.08em;margin-bottom:8px;}
+.pin-logo span{color:var(--gr);}
+.pin-sub{font-size:11px;color:var(--t3);font-family:var(--fm);letter-spacing:.12em;text-transform:uppercase;margin-bottom:48px;}
+.pin-email-step{width:100%;display:flex;flex-direction:column;gap:12px;}
+.pin-label{font-size:12px;color:var(--t2);text-align:center;margin-bottom:8px;}
+.pin-input{width:100%;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rs);padding:14px 16px;color:var(--tx);font-family:var(--fb);font-size:15px;outline:none;text-align:center;transition:var(--tr);}
+.pin-input:focus{border-color:var(--gr);}
+.pin-dots{display:flex;gap:14px;justify-content:center;margin:32px 0 28px;}
+.pin-dot{width:14px;height:14px;border-radius:50%;background:var(--b2);transition:var(--tr);}
+.pin-dot.filled{background:var(--gr);}
+.pin-keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;width:100%;max-width:280px;}
+.pin-key{height:64px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--r);font-size:20px;font-weight:500;color:var(--tx);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:var(--tr);user-select:none;}
+.pin-key:active{background:var(--s3);transform:scale(.96);}
+.pin-key.del{font-size:16px;color:var(--t2);}
+.pin-key.empty{background:transparent;border-color:transparent;cursor:default;}
+.pin-btn{width:100%;max-width:280px;height:50px;background:var(--gr);border:none;border-radius:var(--rs);color:#000;font-family:var(--fb);font-size:15px;font-weight:600;cursor:pointer;margin-top:16px;transition:var(--tr);}
+.pin-btn:hover{background:#00cc6a;}
+.pin-btn:disabled{opacity:.4;cursor:not-allowed;}
+.pin-switch{font-size:12px;color:var(--t2);cursor:pointer;margin-top:20px;text-decoration:underline;}
+.pin-error{font-size:12px;color:var(--rd);text-align:center;min-height:18px;margin-top:8px;font-family:var(--fm);}
+.pin-success{font-size:13px;color:var(--gr);text-align:center;padding:14px;background:var(--gd);border:1px solid rgba(0,230,122,.2);border-radius:var(--rs);}
+
+/* ── MAIN APP ── */
+#screen-app{flex-direction:row;}
+.sidebar{width:230px;background:var(--s1);border-right:1px solid var(--b1);display:flex;flex-direction:column;height:100vh;position:sticky;top:0;flex-shrink:0;overflow-y:auto;}
+.main-area{flex:1;display:flex;flex-direction:column;overflow:hidden;height:100vh;}
+.topbar{height:54px;border-bottom:1px solid var(--b1);display:flex;align-items:center;padding:0 20px;gap:12px;flex-shrink:0;background:var(--s1);}
+.content{flex:1;overflow-y:auto;padding:22px;}
+
+.sb-logo{padding:22px 18px 16px;border-bottom:1px solid var(--b1);}
+.logo{font-family:var(--fd);font-size:20px;letter-spacing:.06em;}
+.logo span{color:var(--gr);}
+.logo-sub{font-size:10px;color:var(--t3);font-family:var(--fm);letter-spacing:.1em;text-transform:uppercase;margin-top:2px;}
+.brand-pill{margin:10px;padding:10px 12px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rs);display:flex;align-items:center;justify-content:space-between;cursor:pointer;transition:var(--tr);}
+.brand-pill:hover{border-color:var(--b2);}
+.brand-pill-name{font-size:13px;font-weight:500;}
+.brand-pill-type{font-size:11px;color:var(--t2);margin-top:1px;}
+.nav-sec{padding:8px 10px 2px;}
+.nav-lbl{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--t3);font-weight:500;padding:0 8px;margin-bottom:3px;font-family:var(--fm);}
+.ni{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:var(--rs);cursor:pointer;color:var(--t2);font-size:13px;transition:var(--tr);margin-bottom:1px;}
+.ni:hover{background:var(--s2);color:var(--tx);}
+.ni.active{background:var(--gd);color:var(--gr);font-weight:500;}
+.ni svg{width:15px;height:15px;flex-shrink:0;}
+.sb-footer{margin-top:auto;padding:14px 10px;border-top:1px solid var(--b1);}
+.user-row{display:flex;align-items:center;gap:9px;padding:8px 10px;}
+.avatar{width:28px;height:28px;border-radius:50%;background:var(--gd);border:1px solid var(--gr);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:var(--gr);}
+
+.page-ttl{font-family:var(--fd);font-size:18px;flex:1;}
+.tbtn{height:32px;padding:0 13px;border-radius:var(--rs);border:1px solid var(--b1);background:transparent;color:var(--tx);font-family:var(--fb);font-size:12px;cursor:pointer;transition:var(--tr);}
+.tbtn:hover{border-color:var(--b2);background:var(--s2);}
+.tbtn.pri{background:var(--gr);border-color:var(--gr);color:#000;font-weight:600;}
+.tbtn.pri:hover{background:#00cc6a;}
+.tbtn.sm{height:26px;font-size:11px;padding:0 10px;}
+
+.dpage{display:none;}
+.dpage.active{display:block;}
+
+/* KPI */
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px;}
+.kc{background:var(--s1);border:1px solid var(--b1);border-radius:var(--r);padding:16px 18px;position:relative;overflow:hidden;}
+.kc::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--ac,var(--b1));}
+.kc.g{--ac:var(--gr)}.kc.r{--ac:var(--rd)}.kc.b{--ac:var(--bl)}.kc.y{--ac:var(--yl)}
+.kc-lbl{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--t2);font-family:var(--fm);margin-bottom:8px;}
+.kc-val{font-family:var(--fd);font-size:24px;line-height:1;margin-bottom:5px;}
+.kc-val.g{color:var(--gr)}.kc-val.r{color:var(--rd)}.kc-val.b{color:var(--bl)}.kc-val.y{color:var(--yl)}
+.kc-sub{font-size:11px;color:var(--t2);}
+.spark{height:32px;margin-top:8px;}
+
+.col2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;}
+.card{background:var(--s1);border:1px solid var(--b1);border-radius:var(--r);padding:16px 18px;margin-bottom:12px;}
+.ch{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+.ct{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--t2);font-family:var(--fm);}
+.cw{position:relative;}.cw canvas{max-height:220px;}
+.cw.tall canvas{max-height:260px;}
+
+.ins{padding:11px 13px;border-radius:var(--rs);border:1px solid;margin-bottom:7px;}
+.ins.g{background:var(--gd2);border-color:rgba(0,230,122,.2);}
+.ins.r{background:rgba(255,71,87,.06);border-color:rgba(255,71,87,.2);}
+.ins.y{background:rgba(255,192,72,.06);border-color:rgba(255,192,72,.2);}
+.ins-lbl{font-size:10px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;margin-bottom:3px;font-family:var(--fm);}
+.ins.g .ins-lbl{color:var(--gr)}.ins.r .ins-lbl{color:var(--rd)}.ins.y .ins-lbl{color:var(--yl)}
+.ins-txt{font-size:13px;font-weight:500;margin-bottom:1px;}
+.ins-sub{font-size:11px;color:var(--t2);}
+
+.tw{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;}
+thead th{padding:9px 13px;text-align:left;font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--t3);font-family:var(--fm);border-bottom:1px solid var(--b1);}
+tbody td{padding:10px 13px;font-size:13px;border-bottom:1px solid var(--b1);}
+tbody tr:last-child td{border-bottom:none;}
+tbody tr:hover{background:var(--s2);}
+.tag{display:inline-flex;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:500;font-family:var(--fm);}
+.tag.g{background:rgba(0,230,122,.12);color:var(--gr);}
+.tag.r{background:rgba(255,71,87,.12);color:var(--rd);}
+.tag.y{background:rgba(255,192,72,.12);color:var(--yl);}
+.tag.gray{background:var(--s3);color:var(--t2);}
+.ap{color:var(--gr);font-family:var(--fm);}
+.an{color:var(--rd);font-family:var(--fm);}
+
+.sr{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--b1);}
+.sr:last-child{border-bottom:none;}
+.sr-k{font-size:12px;color:var(--t2);}
+.sr-v{font-size:13px;font-family:var(--fm);}
+
+/* MODAL */
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(4px);z-index:100;display:none;align-items:center;justify-content:center;}
+.ov.open{display:flex;}
+.modal{background:var(--s1);border:1px solid var(--b2);border-radius:16px;padding:22px;width:480px;max-width:94vw;max-height:90vh;overflow-y:auto;}
+.mhdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;}
+.mttl{font-family:var(--fd);font-size:19px;}
+.mx{width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--t2);background:var(--s2);border:1px solid var(--b1);font-size:16px;}
+.mx:hover{color:var(--tx);}
+.fg2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;}
+.fg1{margin-bottom:14px;}
+.fl{font-size:11px;font-weight:500;color:var(--t2);text-transform:uppercase;letter-spacing:.07em;font-family:var(--fm);margin-bottom:6px;display:block;}
+.fi,.fs{width:100%;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rs);padding:10px 13px;color:var(--tx);font-family:var(--fb);font-size:13px;outline:none;transition:var(--tr);}
+.fi:focus,.fs:focus{border-color:var(--gr);}
+.fs{cursor:pointer;appearance:none;}
+.fs option{background:var(--s2);}
+.mactions{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;}
+.btn{height:36px;padding:0 18px;border-radius:var(--rs);border:1px solid var(--b1);background:var(--s2);color:var(--t2);font-family:var(--fb);font-size:13px;font-weight:500;cursor:pointer;transition:var(--tr);}
+.btn:hover{border-color:var(--b2);color:var(--tx);}
+.btn.pri{background:var(--gr);border-color:var(--gr);color:#000;font-weight:600;}
+.btn.pri:hover{background:#00cc6a;}
+
+/* Health Score */
+.hs-banner{background:var(--s1);border:1px solid rgba(0,230,122,.2);border-radius:var(--r);padding:14px 18px;margin-bottom:14px;display:flex;align-items:center;gap:16px;}
+.hs-num{font-family:var(--fd);font-size:36px;color:var(--gr);line-height:1;}
+.hs-div{width:1px;height:44px;background:var(--b1);}
+
+/* Loading */
+.loading{display:flex;align-items:center;justify-content:center;height:100vh;flex-direction:column;gap:14px;color:var(--t2);}
+.spinner{width:32px;height:32px;border:2px solid var(--b1);border-top-color:var(--gr);border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+::-webkit-scrollbar{width:5px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--b2);border-radius:3px;}
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div class="screen active" id="screen-loading">
+  <div class="loading">
+    <div class="spinner"></div>
+    <span style="font-family:var(--fm);font-size:12px;">Loading CETARA…</span>
+  </div>
+</div>
+
+<!-- PIN / EMAIL LOGIN -->
+<div class="screen" id="screen-pin">
+  <div class="pin-wrap">
+    <div class="pin-logo">CET<span>A</span>RA</div>
+    <div class="pin-sub">Brand Financial OS</div>
+
+    <!-- EMAIL STEP -->
+    <div class="pin-email-step" id="email-step">
+      <div class="pin-label">Enter your email to get started</div>
+      <input class="pin-input" type="email" id="email-input" placeholder="your@email.com" autocomplete="email">
+      <div class="pin-error" id="email-error"></div>
+      <button class="pin-btn" id="email-btn" onclick="sendMagicLink()">Continue →</button>
+      <div style="text-align:center;margin-top:12px;font-size:12px;color:var(--t2);">Already have a PIN? <span class="pin-switch" onclick="showPinStep()">Enter PIN</span></div>
+    </div>
+
+    <!-- MAGIC LINK SENT -->
+    <div id="magic-sent" style="display:none;width:100%;">
+      <div class="pin-success">
+        ✓ Check your email — we sent a login link to <strong id="sent-email"></strong>
+      </div>
+      <div style="font-size:12px;color:var(--t2);text-align:center;margin-top:16px;">Click the link in your email to sign in. You can close this tab.</div>
+      <div class="pin-switch" style="text-align:center;margin-top:16px;" onclick="showEmailStep()">← Back</div>
+    </div>
+
+    <!-- PIN STEP -->
+    <div id="pin-step" style="display:none;width:100%;align-items:center;flex-direction:column;">
+      <div class="pin-label" id="pin-label">Enter your PIN</div>
+      <div class="pin-dots" id="pin-dots">
+        <div class="pin-dot" id="d0"></div>
+        <div class="pin-dot" id="d1"></div>
+        <div class="pin-dot" id="d2"></div>
+        <div class="pin-dot" id="d3"></div>
+      </div>
+      <div class="pin-error" id="pin-error"></div>
+      <div class="pin-keypad">
+        <div class="pin-key" onclick="pinKey('1')">1</div>
+        <div class="pin-key" onclick="pinKey('2')">2</div>
+        <div class="pin-key" onclick="pinKey('3')">3</div>
+        <div class="pin-key" onclick="pinKey('4')">4</div>
+        <div class="pin-key" onclick="pinKey('5')">5</div>
+        <div class="pin-key" onclick="pinKey('6')">6</div>
+        <div class="pin-key" onclick="pinKey('7')">7</div>
+        <div class="pin-key" onclick="pinKey('8')">8</div>
+        <div class="pin-key" onclick="pinKey('9')">9</div>
+        <div class="pin-key empty"></div>
+        <div class="pin-key" onclick="pinKey('0')">0</div>
+        <div class="pin-key del" onclick="pinDel()">⌫</div>
+      </div>
+      <div class="pin-switch" onclick="showEmailStep()">← Use email instead</div>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div class="screen" id="screen-app">
+  <div class="sidebar">
+    <div class="sb-logo">
+      <div class="logo">CET<span>A</span>RA</div>
+      <div class="logo-sub">Financial OS</div>
+    </div>
+    <div class="brand-pill">
+      <div>
+        <div class="brand-pill-name" id="sb-brand-name">Brand</div>
+        <div class="brand-pill-type" id="sb-brand-type">—</div>
+      </div>
+      <span style="color:var(--t3)">⇅</span>
+    </div>
+    <div class="nav-sec">
+      <div class="nav-lbl">Overview</div>
+      <div class="ni active" onclick="navTo('dashboard',this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        Dashboard
+      </div>
+    </div>
+    <div class="nav-sec">
+      <div class="nav-lbl">Finance</div>
+      <div class="ni" onclick="navTo('expenses',this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+        Expenses
+      </div>
+      <div class="ni" onclick="navTo('revenues',this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+        Revenues
+      </div>
+      <div class="ni" onclick="navTo('pnl',this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        P&amp;L Report
+      </div>
+    </div>
+    <div class="nav-sec">
+      <div class="nav-lbl">Records</div>
+      <div class="ni" onclick="navTo('history',this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="12 8 12 12 14 14"/><path d="M3.05 11a9 9 0 109.19-8.69"/></svg>
+        History
+      </div>
+    </div>
+    <div class="sb-footer">
+      <div class="user-row">
+        <div class="avatar" id="sb-avatar">?</div>
+        <div>
+          <div style="font-size:13px;font-weight:500;" id="sb-email">—</div>
+          <div style="font-size:11px;color:var(--gr);">Pro Plan</div>
+        </div>
+      </div>
+      <div style="margin-top:8px;padding:0 8px;">
+        <button class="tbtn" style="width:100%;color:var(--t2);" onclick="signOut()">Sign out</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="main-area">
+    <div class="topbar">
+      <div class="page-ttl" id="page-ttl">Dashboard</div>
+      <button class="tbtn pri" onclick="openAddModal()">+ Add Entry</button>
+    </div>
+    <div class="content">
+
+      <!-- Dashboard -->
+      <div class="dpage active" id="dp-dashboard">
+        <div class="hs-banner" id="hs-banner" style="display:none;">
+          <div>
+            <div style="font-size:10px;color:var(--t3);font-family:var(--fm);text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px;">Health Score</div>
+            <div class="hs-num" id="hs-num">—</div>
+          </div>
+          <div class="hs-div"></div>
+          <div style="flex:1;">
+            <div style="font-size:14px;font-weight:500;" id="hs-state">—</div>
+            <div style="font-size:12px;color:var(--t2);margin-top:3px;" id="hs-sub">Based on your financial profile</div>
+          </div>
+        </div>
+        <div class="kpi-grid">
+          <div class="kc g"><div class="kc-lbl">Total Revenue</div><div class="kc-val g" id="d-rev">EGP 0</div><div class="kc-sub">All entries</div><div class="spark"><canvas id="sp-rev"></canvas></div></div>
+          <div class="kc r"><div class="kc-lbl">Total Expenses</div><div class="kc-val r" id="d-exp">EGP 0</div><div class="kc-sub">All entries</div><div class="spark"><canvas id="sp-exp"></canvas></div></div>
+          <div class="kc g"><div class="kc-lbl">Net Profit</div><div class="kc-val g" id="d-profit">EGP 0</div><div class="kc-sub">Revenue − Expenses</div></div>
+          <div class="kc b"><div class="kc-lbl">Net Margin</div><div class="kc-val b" id="d-margin">0%</div><div class="kc-sub">Profitability ratio</div></div>
+        </div>
+        <div class="col2">
+          <div class="card"><div class="ch"><span class="ct">Revenue vs Expenses</span></div><div class="cw tall"><canvas id="ch-revexp"></canvas></div></div>
+          <div class="card"><div class="ch"><span class="ct">Smart Insights</span></div><div id="insights-box"><div class="ins y"><div class="ins-lbl">ℹ Getting started</div><div class="ins-txt">Add your first entries to see insights</div></div></div></div>
+        </div>
+        <div class="card"><div class="ch"><span class="ct">Recent Transactions</span></div>
+          <div class="tw"><table><thead><tr><th>Date</th><th>Description</th><th>Type</th><th>Amount</th></tr></thead><tbody id="recent-tbody"></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- Expenses -->
+      <div class="dpage" id="dp-expenses">
+        <div class="kpi-grid">
+          <div class="kc r"><div class="kc-lbl">Total Expenses</div><div class="kc-val r" id="e-total">EGP 0</div></div>
+          <div class="kc y"><div class="kc-lbl">Avg / Month</div><div class="kc-val y" id="e-avg">EGP 0</div></div>
+          <div class="kc r"><div class="kc-lbl">Top Category</div><div class="kc-val" style="font-size:16px;" id="e-top">—</div></div>
+          <div class="kc b"><div class="kc-lbl">Entries</div><div class="kc-val b" id="e-count">0</div></div>
+        </div>
+        <div class="card"><div class="ch"><span class="ct">All Expenses</span><button class="tbtn pri sm" onclick="openAddModal('expense')">+ Add</button></div>
+          <div class="tw"><table><thead><tr><th>Date</th><th>Description</th><th>Category</th><th>Amount</th><th>Notes</th><th></th></tr></thead><tbody id="exp-tbody"></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- Revenues -->
+      <div class="dpage" id="dp-revenues">
+        <div class="kpi-grid">
+          <div class="kc g"><div class="kc-lbl">Total Revenue</div><div class="kc-val g" id="r-total">EGP 0</div></div>
+          <div class="kc g"><div class="kc-lbl">Avg / Month</div><div class="kc-val g" id="r-avg">EGP 0</div></div>
+          <div class="kc b"><div class="kc-lbl">Top Source</div><div class="kc-val" style="font-size:16px;" id="r-top">—</div></div>
+          <div class="kc b"><div class="kc-lbl">Entries</div><div class="kc-val b" id="r-count">0</div></div>
+        </div>
+        <div class="card"><div class="ch"><span class="ct">All Revenue</span><button class="tbtn pri sm" onclick="openAddModal('revenue')">+ Add</button></div>
+          <div class="tw"><table><thead><tr><th>Date</th><th>Description</th><th>Category</th><th>Amount</th><th></th></tr></thead><tbody id="rev-tbody"></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- P&L -->
+      <div class="dpage" id="dp-pnl">
+        <div class="kpi-grid">
+          <div class="kc g"><div class="kc-lbl">Gross Revenue</div><div class="kc-val g" id="pnl-rev">—</div></div>
+          <div class="kc r"><div class="kc-lbl">Total Expenses</div><div class="kc-val r" id="pnl-exp">—</div></div>
+          <div class="kc g"><div class="kc-lbl">Net Profit</div><div class="kc-val g" id="pnl-net">—</div></div>
+          <div class="kc b"><div class="kc-lbl">Net Margin</div><div class="kc-val b" id="pnl-margin">—</div></div>
+        </div>
+        <div class="col2">
+          <div class="card"><div class="ch"><span class="ct">P&L Statement</span></div><div id="pnl-statement"></div></div>
+          <div class="card"><div class="ch"><span class="ct">Key Ratios</span></div>
+            <div class="sr"><span class="sr-k">Gross Margin</span><span class="sr-v" style="color:var(--gr)" id="pnl-gm">—</span></div>
+            <div class="sr"><span class="sr-k">Net Margin</span><span class="sr-v" style="color:var(--gr)" id="pnl-nm">—</span></div>
+            <div class="sr"><span class="sr-k">Total Revenue</span><span class="sr-v" id="pnl-r2">—</span></div>
+            <div class="sr"><span class="sr-k">Total Expenses</span><span class="sr-v" id="pnl-e2">—</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- History -->
+      <div class="dpage" id="dp-history">
+        <div class="card"><div class="ch"><span class="ct">All Transactions</span><span style="font-size:11px;color:var(--t3)" id="hist-count">0 entries</span></div>
+          <div class="tw"><table><thead><tr><th>Date</th><th>Type</th><th>Description</th><th>Category</th><th>Amount</th><th></th></tr></thead><tbody id="hist-tbody"></tbody></table></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ADD ENTRY MODAL -->
+<div class="ov" id="add-modal">
+  <div class="modal">
+    <div class="mhdr"><div class="mttl">Add Entry</div><div class="mx" onclick="closeModal()">✕</div></div>
+    <div class="fg2">
+      <div><label class="fl">Type</label><select class="fs" id="ent-type"><option value="expense">Expense</option><option value="revenue">Revenue</option></select></div>
+      <div><label class="fl">Date</label><input type="date" class="fi" id="ent-date"></div>
+    </div>
+    <div class="fg1"><label class="fl">Description</label><input class="fi" id="ent-desc" placeholder="e.g. Meta Ads — June"></div>
+    <div class="fg2">
+      <div><label class="fl">Category</label><select class="fs" id="ent-cat"><option>Production</option><option>Marketing & Content</option><option>Delivery</option><option>Fabric & Materials</option><option>Packaging</option><option>Misc</option><option>Shopify Orders</option><option>Wholesale</option><option>Events</option><option>Other</option></select></div>
+      <div><label class="fl">Amount (EGP)</label><input type="number" class="fi" id="ent-amt" placeholder="0"></div>
+    </div>
+    <div class="fg1"><label class="fl">Notes</label><input class="fi" id="ent-notes" placeholder="Optional"></div>
+    <div class="mactions"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn pri" onclick="saveEntry()">Save Entry</button></div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════
+// SUPABASE INIT
+// ══════════════════════════════════════
+const SUPA_URL = 'https://ltsqledmcbuxdlbkyqui.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx0c3FsZWRtY2J1eGRsYmt5cXVpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5MzUwMDUsImV4cCI6MjA5NjUxMTAwNX0.R55UGBjXdSPEoZBfWWsCuUgi1cjgEQIX-wzvPNfSDpM';
+const { createClient } = supabase;
+const sb = createClient(SUPA_URL, SUPA_KEY);
+
+let currentUser = null;
+let currentBrand = null;
+let allEntries = [];
+let charts = {};
+let curPage = 'dashboard';
+
+// ══════════════════════════════════════
+// INIT — CHECK SESSION
+// ══════════════════════════════════════
+async function init() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) {
+    currentUser = session.user;
+    await loadUserData();
+  } else {
+    showScreen('pin');
+  }
+}
+
+sb.auth.onAuthStateChange(async (event, session) => {
+  if (event === 'SIGNED_IN' && session) {
+    currentUser = session.user;
+    await loadUserData();
+  }
+  if (event === 'SIGNED_OUT') {
+    showScreen('pin');
+  }
+});
+
+// ══════════════════════════════════════
+// AUTH
+// ══════════════════════════════════════
+async function sendMagicLink() {
+  const email = document.getElementById('email-input').value.trim();
+  const err = document.getElementById('email-error');
+  const btn = document.getElementById('email-btn');
+  if (!email || !email.includes('@')) { err.textContent = 'Enter a valid email.'; return; }
+  err.textContent = '';
+  btn.textContent = 'Sending…'; btn.disabled = true;
+  const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: window.location.href } });
+  if (error) { err.textContent = error.message; btn.textContent = 'Continue →'; btn.disabled = false; return; }
+  document.getElementById('sent-email').textContent = email;
+  document.getElementById('email-step').style.display = 'none';
+  document.getElementById('magic-sent').style.display = 'block';
+  btn.textContent = 'Continue →'; btn.disabled = false;
+}
+
+let pinValue = '';
+let pinMode = 'login'; // 'login' or 'set'
+
+function showPinStep() {
+  document.getElementById('email-step').style.display = 'none';
+  document.getElementById('magic-sent').style.display = 'none';
+  const ps = document.getElementById('pin-step');
+  ps.style.display = 'flex';
+  pinValue = '';
+  updatePinDots();
+}
+
+function showEmailStep() {
+  document.getElementById('email-step').style.display = 'flex';
+  document.getElementById('magic-sent').style.display = 'none';
+  document.getElementById('pin-step').style.display = 'none';
+}
+
+function pinKey(k) {
+  if (pinValue.length >= 4) return;
+  pinValue += k;
+  updatePinDots();
+  if (pinValue.length === 4) setTimeout(checkPin, 200);
+}
+
+function pinDel() {
+  pinValue = pinValue.slice(0, -1);
+  updatePinDots();
+  document.getElementById('pin-error').textContent = '';
+}
+
+function updatePinDots() {
+  for (let i = 0; i < 4; i++) {
+    document.getElementById('d' + i).classList.toggle('filled', i < pinValue.length);
+  }
+}
+
+async function checkPin() {
+  const stored = localStorage.getItem('cetara_pin');
+  const storedEmail = localStorage.getItem('cetara_email');
+  if (!stored || !storedEmail) { document.getElementById('pin-error').textContent = 'No PIN set. Use email login first.'; pinValue = ''; updatePinDots(); return; }
+  if (pinValue !== stored) { document.getElementById('pin-error').textContent = 'Wrong PIN. Try again.'; pinValue = ''; updatePinDots(); return; }
+  // Sign in with stored session
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) { currentUser = session.user; await loadUserData(); }
+  else { document.getElementById('pin-error').textContent = 'Session expired. Use email login.'; pinValue = ''; updatePinDots(); }
+}
+
+async function signOut() {
+  await sb.auth.signOut();
+  currentUser = null; currentBrand = null; allEntries = [];
+  showScreen('pin');
+  showEmailStep();
+}
+
+// ══════════════════════════════════════
+// LOAD USER DATA
+// ══════════════════════════════════════
+async function loadUserData() {
+  showScreen('loading');
+  // Get or create user record
+  let { data: user } = await sb.from('users').select('*').eq('email', currentUser.email).single();
+  if (!user) {
+    const { data: newUser } = await sb.from('users').insert({ email: currentUser.email }).select().single();
+    user = newUser;
+  }
+  // Get or create brand
+  let { data: brands } = await sb.from('brands').select('*').eq('user_id', user.id).order('created_at');
+  if (!brands || !brands.length) {
+    const { data: newBrand } = await sb.from('brands').insert({ user_id: user.id, name: 'My Brand', data: {} }).select().single();
+    brands = [newBrand];
+  }
+  currentBrand = brands[0];
+  // Load entries
+  const { data: entries } = await sb.from('entries').select('*').eq('brand_id', currentBrand.id).order('date', { ascending: false });
+  allEntries = entries || [];
+  // Setup PIN prompt
+  if (!localStorage.getItem('cetara_pin')) {
+    localStorage.setItem('cetara_email', currentUser.email);
+    const pin = prompt('Set a 4-digit PIN for quick login (or press Cancel to skip):');
+    if (pin && /^\d{4}$/.test(pin)) localStorage.setItem('cetara_pin', pin);
+  }
+  // Render
+  setupApp();
+  showScreen('app');
+}
+
+// ══════════════════════════════════════
+// SETUP APP UI
+// ══════════════════════════════════════
+function setupApp() {
+  const email = currentUser.email;
+  document.getElementById('sb-email').textContent = email;
+  document.getElementById('sb-avatar').textContent = email[0].toUpperCase();
+  document.getElementById('sb-brand-name').textContent = currentBrand.name;
+  document.getElementById('sb-brand-type').textContent = currentBrand.data?.industry || 'Brand';
+  if (currentBrand.health_score) {
+    document.getElementById('hs-banner').style.display = 'flex';
+    document.getElementById('hs-num').textContent = currentBrand.health_score;
+    document.getElementById('hs-state').textContent = currentBrand.brand_state;
+  }
+  renderDashboard();
+}
+
+// ══════════════════════════════════════
+// NAVIGATION
+// ══════════════════════════════════════
+function navTo(page, el) {
+  document.querySelectorAll('.ni').forEach(n => n.classList.remove('active'));
+  el.classList.add('active');
+  document.querySelectorAll('.dpage').forEach(p => p.classList.remove('active'));
+  document.getElementById('dp-' + page).classList.add('active');
+  document.getElementById('page-ttl').textContent = el.textContent.trim();
+  curPage = page;
+  if (page === 'dashboard') renderDashboard();
+  if (page === 'expenses') renderExpenses();
+  if (page === 'revenues') renderRevenues();
+  if (page === 'pnl') renderPnl();
+  if (page === 'history') renderHistory();
+}
+
+// ══════════════════════════════════════
+// RENDER FUNCTIONS
+// ══════════════════════════════════════
+const fmtEGP = (n) => 'EGP ' + Math.round(n).toLocaleString();
+
+function renderDashboard() {
+  const exps = allEntries.filter(e => e.type === 'expense');
+  const revs = allEntries.filter(e => e.type === 'revenue');
+  const totalRev = revs.reduce((a, e) => a + +e.amount, 0);
+  const totalExp = exps.reduce((a, e) => a + +e.amount, 0);
+  const net = totalRev - totalExp;
+  const margin = totalRev > 0 ? Math.round(net / totalRev * 100) : 0;
+  document.getElementById('d-rev').textContent = fmtEGP(totalRev);
+  document.getElementById('d-exp').textContent = fmtEGP(totalExp);
+  document.getElementById('d-profit').textContent = (net >= 0 ? '+' : '') + fmtEGP(net);
+  document.getElementById('d-margin').textContent = margin + '%';
+  // Insights
+  const ibox = document.getElementById('insights-box');
+  const ins = [];
+  if (totalRev > 0) {
+    ins.push(`<div class="ins ${margin > 20 ? 'g' : margin > 0 ? 'y' : 'r'}"><div class="ins-lbl">${margin > 20 ? '● Profitable' : margin > 0 ? '⚠ Low margin' : '✕ Losing money'}</div><div class="ins-txt">${margin}% net margin</div><div class="ins-sub">Revenue ${fmtEGP(totalRev)} · Expenses ${fmtEGP(totalExp)}</div></div>`);
+  }
+  const cats = {};
+  exps.forEach(e => { cats[e.category] = (cats[e.category] || 0) + +e.amount; });
+  const top = Object.entries(cats).sort((a, b) => b[1] - a[1])[0];
+  if (top) ins.push(`<div class="ins r"><div class="ins-lbl">● Top Spend</div><div class="ins-txt">${top[0]} — ${fmtEGP(top[1])}</div><div class="ins-sub">${totalExp > 0 ? Math.round(top[1] / totalExp * 100) : 0}% of all expenses</div></div>`);
+  if (!ins.length) ins.push(`<div class="ins y"><div class="ins-lbl">ℹ Getting started</div><div class="ins-txt">Add your first entries to see insights</div></div>`);
+  ibox.innerHTML = ins.join('');
+  // Recent
+  document.getElementById('recent-tbody').innerHTML = allEntries.slice(0, 8).map(e => `
+    <tr><td style="color:var(--t2)">${e.date || '—'}</td><td>${e.description || '—'}</td><td><span class="tag ${e.type === 'expense' ? 'r' : 'g'}">${e.type}</span></td><td class="${e.type === 'expense' ? 'an' : 'ap'}">${e.type === 'expense' ? '-' : '+'}${fmtEGP(+e.amount)}</td></tr>`).join('') || '<tr><td colspan="4" style="text-align:center;padding:24px;color:var(--t3)">No entries yet</td></tr>';
+  // Charts
+  setTimeout(() => {
+    mkSpark('sp-rev', [0, totalRev * 0.4, totalRev * 0.6, totalRev * 0.8, totalRev], '#00e67a');
+    mkSpark('sp-exp', [0, totalExp * 0.4, totalExp * 0.6, totalExp * 0.8, totalExp], '#ff4757');
+    // Rev vs Exp bar
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
+    const mRevs = months.map((_, i) => revs.filter(e => e.date && new Date(e.date).getMonth() === i).reduce((a, e) => a + +e.amount, 0));
+    const mExps = months.map((_, i) => exps.filter(e => e.date && new Date(e.date).getMonth() === i).reduce((a, e) => a + +e.amount, 0));
+    mkChart('ch-revexp', 'bar', { labels: months, datasets: [{ label: 'Revenue', data: mRevs, backgroundColor: 'rgba(0,230,122,.65)', borderRadius: 4 }, { label: 'Expenses', data: mExps, backgroundColor: 'rgba(255,71,87,.5)', borderRadius: 4 }] }, { plugins: { legend: { display: true, labels: { color: '#888', font: { family: 'DM Sans', size: 11 } } } } });
+  }, 80);
+}
+
+function renderExpenses() {
+  const exps = allEntries.filter(e => e.type === 'expense');
+  const total = exps.reduce((a, e) => a + +e.amount, 0);
+  const months = new Set(exps.map(e => e.date?.slice(0, 7))).size || 1;
+  document.getElementById('e-total').textContent = fmtEGP(total);
+  document.getElementById('e-avg').textContent = fmtEGP(total / months);
+  document.getElementById('e-count').textContent = exps.length;
+  const cats = {}; exps.forEach(e => { cats[e.category] = (cats[e.category] || 0) + +e.amount; });
+  const top = Object.entries(cats).sort((a, b) => b[1] - a[1])[0];
+  document.getElementById('e-top').textContent = top ? top[0] : '—';
+  document.getElementById('exp-tbody').innerHTML = exps.map(e => `
+    <tr><td style="color:var(--t2)">${e.date || '—'}</td><td>${e.description || '—'}</td><td><span class="tag r">${e.category}</span></td><td class="an">-${fmtEGP(+e.amount)}</td><td style="color:var(--t2)">${e.notes || '—'}</td><td><span style="cursor:pointer;color:var(--t3)" onclick="delEntry('${e.id}')">✕</span></td></tr>`).join('') || '<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--t3)">No expenses yet</td></tr>';
+}
+
+function renderRevenues() {
+  const revs = allEntries.filter(e => e.type === 'revenue');
+  const total = revs.reduce((a, e) => a + +e.amount, 0);
+  const months = new Set(revs.map(e => e.date?.slice(0, 7))).size || 1;
+  document.getElementById('r-total').textContent = fmtEGP(total);
+  document.getElementById('r-avg').textContent = fmtEGP(total / months);
+  document.getElementById('r-count').textContent = revs.length;
+  const cats = {}; revs.forEach(e => { cats[e.category] = (cats[e.category] || 0) + +e.amount; });
+  const top = Object.entries(cats).sort((a, b) => b[1] - a[1])[0];
+  document.getElementById('r-top').textContent = top ? top[0] : '—';
+  document.getElementById('rev-tbody').innerHTML = revs.map(e => `
+    <tr><td style="color:var(--t2)">${e.date || '—'}</td><td>${e.description || '—'}</td><td><span class="tag g">${e.category}</span></td><td class="ap">+${fmtEGP(+e.amount)}</td><td><span style="cursor:pointer;color:var(--t3)" onclick="delEntry('${e.id}')">✕</span></td></tr>`).join('') || '<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--t3)">No revenues yet</td></tr>';
+}
+
+function renderPnl() {
+  const exps = allEntries.filter(e => e.type === 'expense');
+  const revs = allEntries.filter(e => e.type === 'revenue');
+  const rev = revs.reduce((a, e) => a + +e.amount, 0);
+  const exp = exps.reduce((a, e) => a + +e.amount, 0);
+  const net = rev - exp;
+  const gm = rev > 0 ? Math.round(net / rev * 100) : 0;
+  document.getElementById('pnl-rev').textContent = fmtEGP(rev);
+  document.getElementById('pnl-exp').textContent = fmtEGP(exp);
+  document.getElementById('pnl-net').textContent = (net >= 0 ? '+' : '') + fmtEGP(net);
+  document.getElementById('pnl-margin').textContent = gm + '%';
+  document.getElementById('pnl-gm').textContent = gm + '%';
+  document.getElementById('pnl-nm').textContent = gm + '%';
+  document.getElementById('pnl-r2').textContent = fmtEGP(rev);
+  document.getElementById('pnl-e2').textContent = fmtEGP(exp);
+  document.getElementById('pnl-statement').innerHTML = `
+    <div class="sr"><span class="sr-k">Total Revenue</span><span class="sr-v ap">+${fmtEGP(rev)}</span></div>
+    <div class="sr"><span class="sr-k">Total Expenses</span><span class="sr-v an">-${fmtEGP(exp)}</span></div>
+    <div class="sr" style="background:var(--gd);border-radius:6px;padding:8px 10px;margin-top:6px;"><span class="sr-k" style="color:var(--gr);font-weight:500;">NET PROFIT</span><span class="sr-v ap" style="font-size:16px;">${net >= 0 ? '+' : ''}${fmtEGP(net)}</span></div>`;
+}
+
+function renderHistory() {
+  document.getElementById('hist-count').textContent = allEntries.length + ' entries';
+  document.getElementById('hist-tbody').innerHTML = allEntries.map(e => `
+    <tr><td style="color:var(--t2)">${e.date || '—'}</td><td><span class="tag ${e.type === 'expense' ? 'r' : 'g'}">${e.type}</span></td><td>${e.description || '—'}</td><td><span class="tag gray">${e.category}</span></td><td class="${e.type === 'expense' ? 'an' : 'ap'}">${e.type === 'expense' ? '-' : '+'}${fmtEGP(+e.amount)}</td><td><span style="cursor:pointer;color:var(--t3)" onclick="delEntry('${e.id}')">✕</span></td></tr>`).join('') || '<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--t3)">No entries yet</td></tr>';
+}
+
+// ══════════════════════════════════════
+// ENTRY CRUD
+// ══════════════════════════════════════
+function openAddModal(type) {
+  document.getElementById('add-modal').classList.add('open');
+  document.getElementById('ent-date').value = new Date().toISOString().split('T')[0];
+  if (type) document.getElementById('ent-type').value = type;
+}
+function closeModal() { document.getElementById('add-modal').classList.remove('open'); }
+document.getElementById('add-modal').addEventListener('click', function(e) { if (e.target === this) closeModal(); });
+
+async function saveEntry() {
+  const type = document.getElementById('ent-type').value;
+  const date = document.getElementById('ent-date').value;
+  const description = document.getElementById('ent-desc').value.trim();
+  const category = document.getElementById('ent-cat').value;
+  const amount = parseFloat(document.getElementById('ent-amt').value) || 0;
+  const notes = document.getElementById('ent-notes').value.trim();
+  if (!description || !amount) { alert('Fill description and amount.'); return; }
+  const { data, error } = await sb.from('entries').insert({ brand_id: currentBrand.id, type, date, description, category, amount, notes }).select().single();
+  if (error) { alert('Error: ' + error.message); return; }
+  allEntries.unshift(data);
+  closeModal();
+  document.getElementById('ent-desc').value = '';
+  document.getElementById('ent-amt').value = '';
+  document.getElementById('ent-notes').value = '';
+  if (curPage === 'dashboard') renderDashboard();
+  else if (curPage === 'expenses') renderExpenses();
+  else if (curPage === 'revenues') renderRevenues();
+  else if (curPage === 'history') renderHistory();
+}
+
+async function delEntry(id) {
+  if (!confirm('Delete this entry?')) return;
+  await sb.from('entries').delete().eq('id', id);
+  allEntries = allEntries.filter(e => e.id !== id);
+  if (curPage === 'dashboard') renderDashboard();
+  else if (curPage === 'expenses') renderExpenses();
+  else if (curPage === 'revenues') renderRevenues();
+  else if (curPage === 'history') renderHistory();
+}
+
+// ══════════════════════════════════════
+// CHARTS
+// ══════════════════════════════════════
+const CGRID = { color: 'rgba(255,255,255,0.04)', drawBorder: false };
+const CTICK = { color: '#555', font: { family: 'JetBrains Mono', size: 10 } };
+const BASE = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { backgroundColor: '#1f1f1f', borderColor: '#333', borderWidth: 1 } }, scales: { x: { grid: CGRID, ticks: CTICK, border: { display: false } }, y: { grid: CGRID, ticks: CTICK, border: { display: false } } } };
+
+function mkChart(id, type, data, extra = {}) {
+  const c = document.getElementById(id); if (!c) return;
+  if (charts[id]) charts[id].destroy();
+  charts[id] = new Chart(c, { type, data, options: { ...BASE, ...extra, plugins: { ...BASE.plugins, ...(extra.plugins || {}) } } });
+}
+function mkSpark(id, data, color) {
+  const c = document.getElementById(id); if (!c) return;
+  if (charts[id]) charts[id].destroy();
+  charts[id] = new Chart(c, { type: 'line', data: { labels: data.map((_, i) => i), datasets: [{ data, borderColor: color, borderWidth: 1.5, pointRadius: 0, tension: 0.4, fill: true, backgroundColor: color + '18' }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { enabled: false } }, scales: { x: { display: false }, y: { display: false } } } });
+}
+
+// ══════════════════════════════════════
+// SCREEN ROUTING
+// ══════════════════════════════════════
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + name).classList.add('active');
+}
+
+// START
+init();
+</script>
+</body>
+</html>
