@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+<title>CETARA — Brand Financial OS</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#080808;--s1:#111;--s2:#171717;--s3:#1e1e1e;--s4:#252525;
+  --b1:#2a2a2a;--b2:#363636;--b3:#444;
+  --tx:#f0ece3;--t2:#999;--t3:#555;--t4:#333;
+  --gr:#00e67a;--gd:rgba(0,230,122,.1);--gd2:rgba(0,230,122,.05);
+  --rd:#ff4757;--rd-d:rgba(255,71,87,.1);--yl:#ffc048;--yl-d:rgba(255,192,72,.1);--bl:#4dabff;--bl-d:rgba(77,171,255,.1);--pu:#a855f7;
+  --r:12px;--rs:8px;--rl:16px;
+  --tr:.18s cubic-bezier(.4,0,.2,1);
+  --fd:'DM Serif Display',serif;--fb:'DM Sans',sans-serif;--fm:'JetBrains Mono',monospace;
+  --nav-w:240px;
+  --safe-b: env(safe-area-inset-bottom);
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;background:var(--bg);color:var(--tx);font-family:var(--fb);font-size:14px;overflow:hidden;}
+button,input,select,textarea{font-family:inherit;}
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--b2);border-radius:3px;}
+
+/* ════════════════ SCREEN ROUTER ════════════════ */
+.screen{display:none;height:100vh;height:100dvh;}
+.screen.active{display:flex;}
+
+/* ════════════════ AUTH SCREEN ════════════════ */
+#screen-auth{align-items:center;justify-content:center;background:
+  radial-gradient(ellipse 80% 60% at 50% -10%, rgba(0,230,122,.07), transparent),
+  var(--bg);
+  padding:24px;overflow-y:auto;}
+.auth-card{width:100%;max-width:400px;}
+.auth-logo{text-align:center;margin-bottom:36px;}
+.auth-logo-text{font-family:var(--fd);font-size:30px;letter-spacing:.06em;}
+.auth-logo-text span{color:var(--gr);}
+.auth-logo-sub{font-size:10px;color:var(--t3);font-family:var(--fm);letter-spacing:.15em;text-transform:uppercase;margin-top:6px;}
+
+.auth-tabs{display:flex;background:var(--s2);border:1px solid var(--b1);border-radius:var(--r);padding:3px;margin-bottom:24px;}
+.auth-tab{flex:1;text-align:center;padding:9px;border-radius:8px;font-size:13px;font-weight:500;color:var(--t2);cursor:pointer;transition:var(--tr);}
+.auth-tab.active{background:var(--s3);color:var(--tx);}
+
+.auth-form{display:flex;flex-direction:column;gap:14px;}
+.af-group{display:flex;flex-direction:column;gap:6px;}
+.af-label{font-size:11px;font-weight:500;color:var(--t2);text-transform:uppercase;letter-spacing:.06em;font-family:var(--fm);}
+.af-input{width:100%;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rs);padding:13px 15px;color:var(--tx);font-size:15px;outline:none;transition:var(--tr);}
+.af-input:focus{border-color:var(--gr);background:var(--s3);}
+.af-input::placeholder{color:var(--t4);}
+.af-pw-wrap{position:relative;}
+.af-pw-toggle{position:absolute;right:13px;top:50%;transform:translateY(-50%);font-size:12px;color:var(--t3);cursor:pointer;font-family:var(--fm);background:none;border:none;}
+.af-err{font-size:12px;color:var(--rd);min-height:16px;}
+.af-submit{width:100%;height:48px;background:var(--gr);border:none;border-radius:var(--rs);color:#000;font-size:15px;font-weight:600;cursor:pointer;margin-top:6px;transition:var(--tr);}
+.af-submit:hover{background:#00cc6a;}
+.af-submit:disabled{opacity:.5;cursor:default;}
+.af-divider{display:flex;align-items:center;gap:12px;color:var(--t3);font-size:11px;margin:18px 0;}
+.af-divider::before,.af-divider::after{content:'';flex:1;height:1px;background:var(--b1);}
+.af-pin-row{display:flex;align-items:center;justify-content:center;gap:8px;font-size:13px;color:var(--t2);}
+.af-pin-link{color:var(--gr);cursor:pointer;font-weight:500;}
+.af-msg{padding:12px 14px;border-radius:var(--rs);font-size:13px;border:1px solid;margin-bottom:6px;}
+.af-msg.ok{background:var(--gd2);border-color:rgba(0,230,122,.25);color:var(--gr);}
+.af-msg.err{background:var(--rd-d);border-color:rgba(255,71,87,.25);color:var(--rd);}
+
+/* PIN pad */
+.pin-dots{display:flex;gap:14px;justify-content:center;margin:28px 0 24px;}
+.pin-dot{width:14px;height:14px;border-radius:50%;background:var(--b2);transition:var(--tr);}
+.pin-dot.filled{background:var(--gr);}
+.pin-keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;max-width:280px;margin:0 auto;}
+.pin-key{height:60px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--r);font-size:20px;font-weight:500;color:var(--tx);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:var(--tr);user-select:none;}
+.pin-key:active{background:var(--s3);transform:scale(.96);}
+.pin-key.del{font-size:15px;color:var(--t2);}
+.pin-key.empty{background:transparent;border-color:transparent;cursor:default;}
+
+/* ════════════════ ONBOARDING SCREEN ════════════════ */
+#screen-onboard{flex-direction:row;}
+.ob-sidebar{width:260px;background:var(--s1);border-right:1px solid var(--b1);display:flex;flex-direction:column;flex-shrink:0;height:100%;overflow-y:auto;}
+.ob-main{flex:1;overflow-y:auto;padding:36px 44px 100px;}
+.ob-logo{padding:24px 20px 16px;border-bottom:1px solid var(--b1);}
+.ob-prog{padding:16px 20px;border-bottom:1px solid var(--b1);}
+.prog-lbl{font-size:10px;color:var(--t3);font-family:var(--fm);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;}
+.prog-track{height:3px;background:var(--b1);border-radius:2px;margin-bottom:10px;}
+.prog-fill{height:3px;background:var(--gr);border-radius:2px;transition:width .5s cubic-bezier(.4,0,.2,1);}
+.prog-pct{font-size:11px;color:var(--gr);font-family:var(--fm);}
+.ob-steps{padding:10px 12px;flex:1;}
+.ob-step{display:flex;align-items:flex-start;gap:10px;padding:9px 10px;border-radius:var(--rs);cursor:pointer;transition:var(--tr);margin-bottom:2px;}
+.ob-step:hover{background:var(--s2);}
+.ob-step.active{background:var(--gd);border:1px solid rgba(0,230,122,.15);}
+.ob-step.done .snum{background:var(--gr);color:#000;border-color:var(--gr);}
+.snum{width:21px;height:21px;border-radius:50%;border:1.5px solid var(--b2);display:flex;align-items:center;justify-content:center;font-size:10px;font-family:var(--fm);color:var(--t3);flex-shrink:0;margin-top:1px;transition:var(--tr);}
+.ob-step.active .snum{border-color:var(--gr);color:var(--gr);}
+.stitle{font-size:13px;font-weight:500;}
+.ob-step.active .stitle{color:var(--tx);}
+.ob-step.done .stitle{color:var(--t2);}
+.sdesc{font-size:11px;color:var(--t3);margin-top:1px;}
+.ob-tip-box{padding:16px;border-top:1px solid var(--b1);}
+.ob-tip{background:var(--s2);border:1px solid var(--b1);border-radius:var(--rs);padding:12px 14px;}
+.ob-tip-lbl{font-size:10px;color:var(--gr);font-family:var(--fm);text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px;}
+.ob-tip-txt{font-size:12px;color:var(--t2);line-height:1.5;}
+
+.sec{display:none;max-width:740px;}
+.sec.active{display:block;}
+.sec-eyebrow{font-size:10px;font-family:var(--fm);text-transform:uppercase;letter-spacing:.12em;color:var(--gr);margin-bottom:8px;}
+.sec-title{font-family:var(--fd);font-size:30px;line-height:1.15;margin-bottom:10px;}
+.sec-sub{font-size:14px;color:var(--t2);max-width:560px;line-height:1.6;margin-bottom:28px;}
+.sec-label{font-size:11px;font-weight:500;color:var(--t2);text-transform:uppercase;letter-spacing:.06em;font-family:var(--fm);margin-bottom:7px;display:block;}
+.subsection{font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);font-family:var(--fm);margin:22px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--b1);}
+.divider{height:1px;background:var(--b1);margin:22px 0;}
+
+.fi,.fs,.ft{width:100%;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rs);padding:11px 13px;color:var(--tx);font-size:14px;outline:none;transition:var(--tr);}
+.fi:focus,.fs:focus,.ft:focus{border-color:var(--gr);background:var(--s3);}
+.fi::placeholder,.ft::placeholder{color:var(--t4);}
+.fs{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23555' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:34px;}
+.fs option{background:var(--s2);}
+.ft{resize:vertical;min-height:76px;line-height:1.6;}
+.pfx{position:relative;}.pfx .fi{padding-left:42px;}
+.pfx-lbl{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--t3);font-family:var(--fm);font-size:12px;pointer-events:none;}
+
+.fg2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px;}
+.fg3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:18px;}
+.fg1{margin-bottom:18px;}
+
+.rc-grid{display:grid;gap:8px;margin-bottom:18px;}
+.rc-grid.c2{grid-template-columns:1fr 1fr;}
+.rc-grid.c3{grid-template-columns:1fr 1fr 1fr;}
+.rc{background:var(--s2);border:1.5px solid var(--b1);border-radius:var(--r);padding:12px 14px;cursor:pointer;transition:var(--tr);display:flex;align-items:flex-start;gap:10px;}
+.rc:hover{border-color:var(--b2);}
+.rc.sel{border-color:var(--gr);background:var(--gd2);}
+.rdot{width:15px;height:15px;border-radius:50%;border:1.5px solid var(--b2);flex-shrink:0;margin-top:2px;transition:var(--tr);position:relative;}
+.rc.sel .rdot{border-color:var(--gr);background:var(--gr);}
+.rc.sel .rdot::after{content:'';position:absolute;inset:3px;border-radius:50%;background:#000;}
+.rc-title{font-size:13px;font-weight:500;margin-bottom:1px;}
+.rc-sub{font-size:11px;color:var(--t2);}
+
+.ck{display:flex;align-items:center;gap:10px;padding:10px 13px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rs);cursor:pointer;transition:var(--tr);margin-bottom:7px;}
+.ck:hover{border-color:var(--b2);}
+.ck-box{width:16px;height:16px;border-radius:4px;border:1.5px solid var(--b2);flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:var(--tr);}
+.ck.on .ck-box{background:var(--gr);border-color:var(--gr);}
+.ck-tick{color:#000;font-size:10px;font-weight:700;display:none;}
+.ck.on .ck-tick{display:block;}
+.ck-label{font-size:13px;}
+
+.nav-row{display:flex;justify-content:space-between;align-items:center;margin-top:36px;padding-top:20px;border-top:1px solid var(--b1);}
+.step-ctr{font-size:11px;color:var(--t3);font-family:var(--fm);}
+.btn-row{display:flex;gap:8px;}
+.btn{height:40px;padding:0 20px;border-radius:var(--rs);border:1px solid var(--b1);background:var(--s2);color:var(--t2);font-size:13px;font-weight:500;cursor:pointer;transition:var(--tr);}
+.btn:hover{border-color:var(--b2);color:var(--tx);}
+.btn.pri{background:var(--gr);border-color:var(--gr);color:#000;font-weight:600;}
+.btn.pri:hover{background:#00cc6a;}
+.btn.pri:disabled{opacity:.5;cursor:default;}
+.btn.ghost{background:transparent;border-color:transparent;color:var(--t3);}
+.btn.ghost:hover{color:var(--t2);}
+
+/* connect cards */
+.connect-box{background:var(--s2);border:1.5px solid var(--b1);border-radius:var(--r);padding:22px;margin-bottom:16px;}
+.connect-hdr{display:flex;align-items:center;gap:12px;margin-bottom:16px;}
+.connect-ico{width:40px;height:40px;border-radius:9px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px;font-weight:700;flex-shrink:0;}
+.connect-ico.shopify{background:linear-gradient(135deg,#95bf47,#5e8e3e);}
+.connect-ico.meta{background:linear-gradient(135deg,#0082fb,#0468d4);}
+.connect-name{font-size:15px;font-weight:500;}
+.connect-sub{font-size:11px;color:var(--t2);margin-top:1px;}
+.sdot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.sdot.off{background:var(--t3);}
+.sdot.on{background:var(--gr);}
+.sdot.err{background:var(--rd);}
+.cbtn{height:36px;padding:0 16px;border-radius:var(--rs);border:none;font-size:13px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:7px;transition:var(--tr);}
+.cbtn.pri{background:var(--gr);color:#000;}
+.cbtn.pri:hover{background:#00cc6a;}
+.cbtn.sec{background:var(--s3);border:1px solid var(--b1);color:var(--t2);}
+.cbtn.sec:hover{border-color:var(--b2);color:var(--tx);}
+.cs-code{background:var(--s3);border:1px solid var(--b1);border-radius:5px;padding:7px 11px;font-family:var(--fm);font-size:11px;color:var(--t2);margin-top:5px;word-break:break-all;line-height:1.6;}
+
+.score-card{background:var(--s2);border:1.5px solid rgba(0,230,122,.25);border-radius:var(--r);padding:28px;text-align:center;margin-bottom:18px;}
+.score-num{font-family:var(--fd);font-size:68px;line-height:1;color:var(--gr);}
+.score-lbl{font-size:11px;color:var(--t2);margin-top:5px;font-family:var(--fm);letter-spacing:.08em;text-transform:uppercase;}
+.score-state{display:inline-flex;align-items:center;gap:6px;margin-top:10px;padding:4px 14px;border-radius:20px;background:var(--gd);border:1px solid rgba(0,230,122,.3);font-size:13px;font-weight:500;color:var(--gr);}
+.action-list{display:flex;flex-direction:column;gap:8px;margin-top:18px;text-align:left;}
+.action-item{background:var(--s2);border:1px solid var(--b1);border-radius:var(--rs);padding:12px 14px;display:flex;align-items:flex-start;gap:12px;}
+.action-num{width:22px;height:22px;border-radius:50%;background:var(--gr);color:#000;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:var(--fm);}
+.action-title{font-size:13px;font-weight:500;margin-bottom:2px;}
+.action-sub{font-size:12px;color:var(--t2);line-height:1.5;}
+.action-impact{font-size:10px;font-family:var(--fm);padding:2px 7px;border-radius:4px;margin-left:auto;flex-shrink:0;}
+.action-impact.high{background:rgba(0,230,122,.12);color:var(--gr);}
+.action-impact.med{background:rgba(255,192,72,.12);color:var(--yl);}
+
+/* ════════════════ DASHBOARD SCREEN ════════════════ */
+#screen-app{flex-direction:row;}
+.app-nav{width:var(--nav-w);background:var(--s1);border-right:1px solid var(--b1);display:flex;flex-direction:column;flex-shrink:0;height:100%;overflow-y:auto;}
+.app-content{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;}
+.topbar{height:56px;border-bottom:1px solid var(--b1);display:flex;align-items:center;padding:0 22px;gap:12px;flex-shrink:0;background:var(--s1);}
+.page-area{flex:1;overflow-y:auto;padding:24px;}
+
+.dn-logo{padding:20px 18px 16px;border-bottom:1px solid var(--b1);display:flex;align-items:center;justify-content:space-between;}
+.dn-brand{padding:10px 14px;margin:10px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rs);cursor:pointer;display:flex;align-items:center;justify-content:space-between;transition:var(--tr);}
+.dn-brand:hover{border-color:var(--b2);}
+.dn-section{padding:8px 10px 2px;}
+.dn-lbl{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--t3);font-weight:500;padding:0 8px;margin-bottom:3px;font-family:var(--fm);}
+.ni{display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:var(--rs);cursor:pointer;color:var(--t2);font-size:13px;transition:var(--tr);margin-bottom:1px;}
+.ni:hover{background:var(--s2);color:var(--tx);}
+.ni.active{background:var(--gd);color:var(--gr);font-weight:500;}
+.ni svg{width:15px;height:15px;flex-shrink:0;}
+.nbadge{margin-left:auto;background:var(--gr);color:#000;font-size:10px;font-weight:600;padding:1px 6px;border-radius:20px;font-family:var(--fm);}
+.dn-footer{margin-top:auto;padding:14px 10px;border-top:1px solid var(--b1);}
+.user-row{display:flex;align-items:center;gap:9px;padding:8px 10px;}
+.avatar{width:28px;height:28px;border-radius:50%;background:var(--gd);border:1px solid var(--gr);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:var(--gr);flex-shrink:0;}
+
+.page-ttl{font-family:var(--fd);font-size:19px;flex:1;}
+.tbtn{height:32px;padding:0 13px;border-radius:var(--rs);border:1px solid var(--b1);background:transparent;color:var(--tx);font-size:12px;cursor:pointer;display:flex;align-items:center;gap:5px;transition:var(--tr);white-space:nowrap;}
+.tbtn:hover{border-color:var(--b2);background:var(--s2);}
+.tbtn.pri{background:var(--gr);border-color:var(--gr);color:#000;font-weight:600;}
+.tbtn.pri:hover{background:#00cc6a;}
+
+.dpage{display:none;}
+.dpage.active{display:block;}
+
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px;}
+.kc{background:var(--s1);border:1px solid var(--b1);border-radius:var(--r);padding:16px 18px;position:relative;overflow:hidden;}
+.kc::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--ac,var(--b1));}
+.kc.g{--ac:var(--gr)}.kc.r{--ac:var(--rd)}.kc.y{--ac:var(--yl)}.kc.b{--ac:var(--bl)}
+.kc-lbl{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--t2);font-family:var(--fm);margin-bottom:8px;}
+.kc-val{font-family:var(--fd);font-size:23px;line-height:1;margin-bottom:5px;}
+.kc-val.g{color:var(--gr)}.kc-val.r{color:var(--rd)}.kc-val.b{color:var(--bl)}.kc-val.y{color:var(--yl)}
+.kc-sub{font-size:11px;color:var(--t2);}
+
+.col2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;}
+.card{background:var(--s1);border:1px solid var(--b1);border-radius:var(--r);padding:16px 18px;margin-bottom:12px;}
+.ch{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;}
+.ct{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--t2);font-family:var(--fm);}
+.cw{position:relative;}.cw canvas{max-height:220px;}
+.cw.tall canvas{max-height:260px;}
+
+.ins{padding:11px 13px;border-radius:var(--rs);border:1px solid;margin-bottom:7px;}
+.ins.g{background:var(--gd2);border-color:rgba(0,230,122,.2);}
+.ins.r{background:rgba(255,71,87,.07);border-color:rgba(255,71,87,.2);}
+.ins.y{background:rgba(255,192,72,.07);border-color:rgba(255,192,72,.2);}
+.ins.b{background:rgba(77,171,255,.07);border-color:rgba(77,171,255,.2);}
+.ins-lbl{font-size:10px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;margin-bottom:3px;font-family:var(--fm);}
+.ins.g .ins-lbl{color:var(--gr)}.ins.r .ins-lbl{color:var(--rd)}.ins.y .ins-lbl{color:var(--yl)}.ins.b .ins-lbl{color:var(--bl)}
+.ins-txt{font-size:13px;font-weight:500;margin-bottom:1px;}
+.ins-sub{font-size:11px;color:var(--t2);}
+
+.tw{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;}
+thead th{padding:9px 13px;text-align:left;font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--t3);font-family:var(--fm);border-bottom:1px solid var(--b1);white-space:nowrap;}
+tbody td{padding:10px 13px;font-size:13px;border-bottom:1px solid var(--b1);white-space:nowrap;}
+tbody tr:last-child td{border-bottom:none;}
+tbody tr:hover{background:var(--s2);}
+.tag{display:inline-flex;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:500;font-family:var(--fm);}
+.tag.g{background:rgba(0,230,122,.12);color:var(--gr);}
+.tag.r{background:rgba(255,71,87,.12);color:var(--rd);}
+.tag.y{background:rgba(255,192,72,.12);color:var(--yl);}
+.tag.gray{background:var(--s3);color:var(--t2);}
+.ap{color:var(--gr);font-family:var(--fm);}
+.an{color:var(--rd);font-family:var(--fm);}
+
+.sr{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--b1);}
+.sr:last-child{border-bottom:none;}
+.sr-k{font-size:12px;color:var(--t2);}
+.sr-v{font-size:13px;font-family:var(--fm);}
+
+/* MODAL */
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(4px);z-index:200;display:none;align-items:center;justify-content:center;padding:16px;}
+.ov.open{display:flex;}
+.modal{background:var(--s1);border:1px solid var(--b2);border-radius:16px;padding:22px;width:480px;max-width:100%;max-height:90vh;overflow-y:auto;}
+.modal.wide{width:640px;}
+.mhdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;}
+.mttl{font-family:var(--fd);font-size:19px;}
+.mx{width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--t2);background:var(--s2);border:1px solid var(--b1);font-size:16px;flex-shrink:0;}
+.mx:hover{color:var(--tx);}
+.mactions{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;}
+
+/* AI Advisor chat */
+.ai-chat{display:flex;flex-direction:column;height:60vh;max-height:560px;}
+.ai-msgs{flex:1;overflow-y:auto;padding:4px 2px;display:flex;flex-direction:column;gap:12px;}
+.ai-msg{max-width:88%;padding:11px 14px;border-radius:12px;font-size:13px;line-height:1.6;}
+.ai-msg.user{align-self:flex-end;background:var(--gr);color:#000;border-bottom-right-radius:4px;}
+.ai-msg.bot{align-self:flex-start;background:var(--s2);border:1px solid var(--b1);border-bottom-left-radius:4px;white-space:pre-wrap;}
+.ai-msg.bot strong{color:var(--gr);}
+.ai-input-row{display:flex;gap:8px;margin-top:12px;}
+.ai-input{flex:1;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rs);padding:11px 14px;color:var(--tx);font-size:13px;outline:none;resize:none;}
+.ai-input:focus{border-color:var(--gr);}
+.ai-send{width:42px;height:42px;border-radius:var(--rs);background:var(--gr);border:none;color:#000;font-size:16px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;}
+.ai-send:hover{background:#00cc6a;}
+.ai-typing{display:flex;gap:4px;padding:6px 0;}
+.ai-typing span{width:6px;height:6px;background:var(--t3);border-radius:50%;animation:ai-bounce 1.2s infinite;}
+.ai-typing span:nth-child(2){animation-delay:.15s;}
+.ai-typing span:nth-child(3){animation-delay:.3s;}
+@keyframes ai-bounce{0%,60%,100%{transform:translateY(0);opacity:.4}30%{transform:translateY(-4px);opacity:1}}
+.ai-suggest{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;}
+.ai-chip{font-size:11px;padding:6px 11px;border-radius:20px;background:var(--s2);border:1px solid var(--b1);color:var(--t2);cursor:pointer;transition:var(--tr);}
+.ai-chip:hover{border-color:var(--gr);color:var(--gr);}
+
+/* AI advisor floating button */
+.ai-fab{position:fixed;bottom:24px;right:24px;width:56px;height:56px;border-radius:50%;background:var(--gr);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 20px rgba(0,230,122,.35);z-index:90;transition:var(--tr);}
+.ai-fab:hover{transform:scale(1.06);}
+.ai-fab svg{width:24px;height:24px;color:#000;}
+
+/* ════════════════ MOBILE BOTTOM NAV ════════════════ */
+.mobile-nav{display:none;}
+
+/* ════════════════ RESPONSIVE ════════════════ */
+@media (max-width:880px){
+  :root{--nav-w:0px;}
+  /* onboarding mobile */
+  #screen-onboard{flex-direction:column;}
+  .ob-sidebar{width:100%;height:auto;border-right:none;border-bottom:1px solid var(--b1);flex-direction:row;align-items:center;overflow-x:auto;overflow-y:hidden;flex-shrink:0;}
+  .ob-logo{padding:14px 16px;border-bottom:none;border-right:1px solid var(--b1);flex-shrink:0;}
+  .ob-prog{display:none;}
+  .ob-steps{display:flex;padding:8px;flex:none;}
+  .ob-step{flex-direction:column;align-items:center;text-align:center;gap:4px;padding:6px 10px;white-space:nowrap;}
+  .sdesc{display:none;}
+  .ob-tip-box{display:none;}
+  .ob-main{padding:24px 18px 100px;}
+  .sec-title{font-size:24px;}
+  .fg2,.fg3{grid-template-columns:1fr;}
+  .rc-grid.c2,.rc-grid.c3{grid-template-columns:1fr;}
+
+  /* dashboard mobile */
+  .app-nav{display:none;}
+  .mobile-nav{display:flex;position:fixed;bottom:0;left:0;right:0;background:var(--s1);border-top:1px solid var(--b1);z-index:80;padding:6px 4px calc(6px + var(--safe-b));justify-content:space-around;}
+  .mn-item{display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 8px;border-radius:var(--rs);color:var(--t3);cursor:pointer;flex:1;}
+  .mn-item.active{color:var(--gr);}
+  .mn-item svg{width:20px;height:20px;}
+  .mn-item span{font-size:9px;font-weight:500;}
+  .page-area{padding:16px;padding-bottom:90px;}
+  .topbar{padding:0 14px;height:52px;}
+  .page-ttl{font-size:16px;}
+  .kpi-grid{grid-template-columns:1fr 1fr;gap:10px;}
+  .col2{grid-template-columns:1fr;}
+  .kc-val{font-size:19px;}
+  .card{padding:14px;}
+  .modal{padding:18px;border-radius:14px;}
+  .ai-fab{bottom:78px;right:16px;width:50px;height:50px;}
+  .mhdr .mttl{font-size:17px;}
+  .auth-card{max-width:100%;}
+}
+@media (max-width:480px){
+  .kpi-grid{grid-template-columns:1fr 1fr;}
+  .sec-title{font-size:22px;}
+}
+
+/* utility */
+.hide{display:none!important;}
+.flex-row{display:flex;align-items:center;gap:8px;}
+.spinner{width:30px;height:30px;border:2px solid var(--b1);border-top-color:var(--gr);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-screen{display:flex;align-items:center;justify-content:center;height:100vh;flex-direction:column;gap:14px;color:var(--t2);}
+</style>
+</head>
+<body>
+
+<!-- ════════════════════ LOADING ════════════════════ -->
+<div class="screen active" id="screen-loading">
+  <div class="loading-screen">
+    <div class="spinner"></div>
+    <span style="font-family:var(--fm);font-size:12px;">Loading CETARA…</span>
+  </div>
+</div>
+
+<!-- ════════════════════ AUTH (LOGIN / SIGNUP) ════════════════════ -->
+<div class="screen" id="screen-auth">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <div class="auth-logo-text">CET<span>A</span>RA</div>
+      <div class="auth-logo-sub">Brand Financial OS</div>
+    </div>
+
+    <!-- Email/Password form -->
+    <div id="auth-pw-block">
+      <div class="auth-tabs">
+        <div class="auth-tab active" id="tab-login" onclick="switchAuthTab('login')">Log in</div>
+        <div class="auth-tab" id="tab-signup" onclick="switchAuthTab('signup')">Create account</div>
+      </div>
+
+      <div id="auth-msg-box"></div>
+
+      <div class="auth-form">
+        <div class="af-group">
+          <label class="af-label">Email</label>
+          <input class="af-input" type="email" id="auth-email" placeholder="you@brand.com" autocomplete="email">
+        </div>
+        <div class="af-group">
+          <label class="af-label">Password</label>
+          <div class="af-pw-wrap">
+            <input class="af-input" type="password" id="auth-password" placeholder="••••••••" autocomplete="current-password">
+            <button type="button" class="af-pw-toggle" onclick="togglePw()">SHOW</button>
+          </div>
+        </div>
+        <div class="af-group hide" id="auth-confirm-group">
+          <label class="af-label">Confirm password</label>
+          <input class="af-input" type="password" id="auth-password2" placeholder="••••••••">
+        </div>
+        <div class="af-err" id="auth-err"></div>
+        <button class="af-submit" id="auth-submit-btn" onclick="submitAuth()">Log in →</button>
+      </div>
+
+      <div class="af-divider">OR</div>
+      <div class="af-pin-row">Have a PIN set up? <span class="af-pin-link" onclick="showPinScreen()">Quick login</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════ PIN QUICK LOGIN ════════════════════ -->
+<div class="screen" id="screen-pin">
+  <div class="auth-card" style="text-align:center;">
+    <div class="auth-logo">
+      <div class="auth-logo-text">CET<span>A</span>RA</div>
+      <div class="auth-logo-sub" id="pin-email-sub">Enter your PIN</div>
+    </div>
+    <div class="pin-dots" id="pin-dots">
+      <div class="pin-dot" id="d0"></div><div class="pin-dot" id="d1"></div>
+      <div class="pin-dot" id="d2"></div><div class="pin-dot" id="d3"></div>
+    </div>
+    <div class="af-err" id="pin-err" style="text-align:center;margin-bottom:10px;"></div>
+    <div class="pin-keypad">
+      <div class="pin-key" onclick="pinKey('1')">1</div><div class="pin-key" onclick="pinKey('2')">2</div><div class="pin-key" onclick="pinKey('3')">3</div>
+      <div class="pin-key" onclick="pinKey('4')">4</div><div class="pin-key" onclick="pinKey('5')">5</div><div class="pin-key" onclick="pinKey('6')">6</div>
+      <div class="pin-key" onclick="pinKey('7')">7</div><div class="pin-key" onclick="pinKey('8')">8</div><div class="pin-key" onclick="pinKey('9')">9</div>
+      <div class="pin-key empty"></div><div class="pin-key" onclick="pinKey('0')">0</div><div class="pin-key del" onclick="pinDel()">⌫</div>
+    </div>
+    <div class="af-pin-row" style="margin-top:20px;"><span class="af-pin-link" onclick="showAuthScreen()">← Use email and password</span></div>
+  </div>
+</div>
+
+<!-- ════════════════════ ONBOARDING (MANDATORY ON FIRST LOGIN) ════════════════════ -->
+<div class="screen" id="screen-onboard">
+<div class="ob-sidebar">
+  <div class="ob-logo">
+    <div class="auth-logo-text" style="font-size:18px;">CET<span>A</span>RA</div>
+  </div>
+  <div class="ob-prog">
+    <div class="prog-lbl">Setup progress</div>
+    <div class="prog-track"><div class="prog-fill" id="prog-fill" style="width:0%"></div></div>
+    <div class="prog-pct" id="prog-pct">Step 1 of 7</div>
+  </div>
+  <div class="ob-steps" id="ob-steps"></div>
+  <div class="ob-tip-box">
+    <div class="ob-tip"><div class="ob-tip-lbl">💡 Why this matters</div><div class="ob-tip-txt" id="tip-txt">This is required once — it powers your health score, connections, and AI advisor.</div></div>
+  </div>
+</div>
+
+<div class="ob-main">
+
+<!-- S1: Brand Identity -->
+<div class="sec active" id="sec-1">
+  <div class="sec-eyebrow">Step 1 of 7 · Required</div>
+  <div class="sec-title">Tell us about<br>your brand</div>
+  <div class="sec-sub">This is mandatory before you can see your dashboard. It calibrates every formula in CETARA to your business.</div>
+  <div class="fg2">
+    <div><label class="sec-label">Brand name *</label><input class="fi" id="f-bname" placeholder="e.g. A³ Jeans" oninput="sf('brand_name',this.value)"></div>
+    <div><label class="sec-label">Founded year</label><input class="fi" type="number" placeholder="e.g. 2023" oninput="sf('founded',this.value)"></div>
+  </div>
+  <label class="sec-label">Industry / category *</label>
+  <div class="rc-grid c3">
+    <label class="rc" onclick="sr2(this,'industry','fashion')"><div class="rdot"></div><div><div class="rc-title">Fashion & Apparel</div><div class="rc-sub">Clothing, accessories</div></div></label>
+    <label class="rc" onclick="sr2(this,'industry','beauty')"><div class="rdot"></div><div><div class="rc-title">Beauty & Skincare</div><div class="rc-sub">Cosmetics, personal care</div></div></label>
+    <label class="rc" onclick="sr2(this,'industry','food')"><div class="rdot"></div><div><div class="rc-title">Food & Supplements</div><div class="rc-sub">FMCG, health products</div></div></label>
+    <label class="rc" onclick="sr2(this,'industry','electronics')"><div class="rdot"></div><div><div class="rc-title">Electronics & Tech</div><div class="rc-sub">Gadgets, accessories</div></div></label>
+    <label class="rc" onclick="sr2(this,'industry','home')"><div class="rdot"></div><div><div class="rc-title">Home & Lifestyle</div><div class="rc-sub">Décor, furniture</div></div></label>
+    <label class="rc" onclick="sr2(this,'industry','other')"><div class="rdot"></div><div><div class="rc-title">Other</div><div class="rc-sub">Specify in notes</div></div></label>
+  </div>
+  <label class="sec-label">Sales model *</label>
+  <div class="rc-grid c2">
+    <label class="rc" onclick="sr2(this,'model','cod')"><div class="rdot"></div><div><div class="rc-title">COD — Cash on Delivery</div><div class="rc-sub">Higher cancel rate. Common in MENA.</div></div></label>
+    <label class="rc" onclick="sr2(this,'model','prepaid')"><div class="rdot"></div><div><div class="rc-title">Prepaid / Online payment</div><div class="rc-sub">Better cash flow, lower risk.</div></div></label>
+    <label class="rc" onclick="sr2(this,'model','hybrid')"><div class="rdot"></div><div><div class="rc-title">Hybrid</div><div class="rc-sub">Mix of COD + prepaid.</div></div></label>
+    <label class="rc" onclick="sr2(this,'model','wholesale')"><div class="rdot"></div><div><div class="rc-title">Wholesale / B2B</div><div class="rc-sub">Selling to retailers.</div></div></label>
+  </div>
+  <div class="fg2">
+    <div><label class="sec-label">Primary market</label><select class="fs" oninput="sf('market',this.value)"><option value="">Select region…</option><option>Egypt</option><option>Saudi Arabia</option><option>UAE</option><option>Jordan</option><option>Kuwait</option><option>Oman</option><option>MENA (multiple)</option><option>Global</option></select></div>
+    <div><label class="sec-label">Brand age</label><select class="fs" oninput="sf('age',this.value)"><option value="">Select…</option><option>Less than 6 months</option><option>6–12 months</option><option>1–2 years</option><option>2–5 years</option><option>5+ years</option></select></div>
+  </div>
+  <div class="nav-row"><span class="step-ctr">1 / 7</span><div class="btn-row"><button class="btn pri" id="next-1" onclick="goSec(2)" disabled>Continue →</button></div></div>
+</div>
+
+<!-- S2: Revenue -->
+<div class="sec" id="sec-2">
+  <div class="sec-eyebrow">Step 2 of 7</div>
+  <div class="sec-title">Revenue &<br>sales performance</div>
+  <div class="sec-sub">Your real numbers — these power your Daily Sales tracking and growth formulas. All values in EGP.</div>
+  <div class="subsection">Monthly revenue</div>
+  <div class="fg3">
+    <div><label class="sec-label">This month (EGP)</label><div class="pfx"><span class="pfx-lbl">EGP</span><input type="number" class="fi" placeholder="0" oninput="sf('rev_now',this.value)"></div></div>
+    <div><label class="sec-label">Last month (EGP)</label><div class="pfx"><span class="pfx-lbl">EGP</span><input type="number" class="fi" placeholder="0" oninput="sf('rev_prev',this.value)"></div></div>
+    <div><label class="sec-label">3 months ago (EGP)</label><div class="pfx"><span class="pfx-lbl">EGP</span><input type="number" class="fi" placeholder="0" oninput="sf('rev_3m',this.value)"></div></div>
+  </div>
+  <div class="divider"></div>
+  <div class="subsection">Orders & AOV</div>
+  <div class="fg3">
+    <div><label class="sec-label">Orders / month (avg)</label><input type="number" class="fi" placeholder="e.g. 120" oninput="sf('orders',this.value)"></div>
+    <div><label class="sec-label">Avg order value (EGP)</label><div class="pfx"><span class="pfx-lbl">EGP</span><input type="number" class="fi" placeholder="0" oninput="sf('aov',this.value)"></div></div>
+    <div><label class="sec-label">Cancel / return rate</label><input type="number" class="fi" placeholder="0%" min="0" max="100" oninput="sf('cancel_rate',this.value)"></div>
+  </div>
+  <div class="nav-row"><span class="step-ctr">2 / 7</span><div class="btn-row"><button class="btn ghost" onclick="goSec(1)">← Back</button><button class="btn pri" onclick="goSec(3)">Continue →</button></div></div>
+</div>
+
+<!-- S3: Costs -->
+<div class="sec" id="sec-3">
+  <div class="sec-eyebrow">Step 3 of 7</div>
+  <div class="sec-title">Costs &<br>expenses</div>
+  <div class="sec-sub">Used to calculate your real profit margin, break-even point, and cost efficiency.</div>
+  <div class="subsection">Cost of goods sold</div>
+  <div class="fg2">
+    <div><label class="sec-label">Production cost / unit (EGP)</label><div class="pfx"><span class="pfx-lbl">EGP</span><input type="number" class="fi" placeholder="0" oninput="sf('cogs_unit',this.value)"></div></div>
+    <div><label class="sec-label">Total monthly COGS (EGP)</label><div class="pfx"><span class="pfx-lbl">EGP</span><input type="number" class="fi" placeholder="0" oninput="sf('cogs_month',this.value)"></div></div>
+  </div>
+  <div class="divider"></div>
+  <div class="subsection">Fixed monthly expenses</div>
+  <div class="fg3">
+    <div><label class="sec-label">Rent / warehouse (EGP)</label><div class="pfx"><span class="pfx-lbl">EGP</span><input type="number" class="fi" placeholder="0" oninput="sf('rent',this.value)"></div></div>
+    <div><label class="sec-label">Salaries / freelancers (EGP)</label><div class="pfx"><span class="pfx-lbl">EGP</span><input type="number" class="fi" placeholder="0" oninput="sf('salaries',this.value)"></div></div>
+    <div><label class="sec-label">Tools & software (EGP)</label><div class="pfx"><span class="pfx-lbl">EGP</span><input type="number" class="fi" placeholder="0" oninput="sf('software',this.value)"></div></div>
+  </div>
+  <div class="divider"></div>
+  <div class="subsection">Cash position</div>
+  <div class="fg2">
+    <div><label class="sec-label">Cash in bank right now (EGP)</label><div class="pfx"><span class="pfx-lbl">EGP</span><input type="number" class="fi" placeholder="0" oninput="sf('cash',this.value)"></div></div>
+  </div>
+  <div class="nav-row"><span class="step-ctr">3 / 7</span><div class="btn-row"><button class="btn ghost" onclick="goSec(2)">← Back</button><button class="btn pri" onclick="goSec(4)">Continue →</button></div></div>
+</div>
+
+<!-- S4: Connections (Shopify + Meta) -->
+<div class="sec" id="sec-4">
+  <div class="sec-eyebrow">Step 4 of 7</div>
+  <div class="sec-title">Connect your<br>store & ads</div>
+  <div class="sec-sub">Link Shopify and Meta so your data syncs automatically. You can also skip and enter data manually.</div>
+
+  <div class="connect-box">
+    <div class="connect-hdr">
+      <div class="connect-ico shopify">S</div>
+      <div style="flex:1"><div class="connect-name">Shopify Store</div><div class="connect-sub">Auto-syncs orders, revenue, products</div></div>
+      <div style="display:flex;align-items:center;gap:6px;"><div class="sdot off" id="shopify-dot"></div><span style="font-size:11px;color:var(--t3);" id="shopify-status">Not connected</span></div>
+    </div>
+    <div class="fg2" style="margin-bottom:10px;">
+      <div><label class="sec-label">Store domain</label><input class="fi" id="shopify-domain" placeholder="yourstore.myshopify.com"></div>
+      <div><label class="sec-label">Admin API access token</label><input class="fi" id="shopify-token" type="password" placeholder="shpat_…"></div>
+    </div>
+    <div class="cs-code" style="margin-bottom:12px;">Shopify Admin → Settings → Apps → Develop apps → Create app → Admin API → enable read_orders, read_products → Install → copy token</div>
+    <button class="cbtn pri" onclick="connectShopify()">⚡ Connect Shopify</button>
+    <button class="cbtn sec" onclick="document.getElementById('shopify-manual').classList.toggle('hide')">Skip for now</button>
+  </div>
+
+  <div class="connect-box">
+    <div class="connect-hdr">
+      <div class="connect-ico meta">f</div>
+      <div style="flex:1"><div class="connect-name">Meta Ads</div><div class="connect-sub">Auto-syncs spend, ROAS, CPA</div></div>
+      <div style="display:flex;align-items:center;gap:6px;"><div class="sdot off" id="meta-dot"></div><span style="font-size:11px;color:var(--t3);" id="meta-status">Not connected</span></div>
+    </div>
+    <div class="fg2" style="margin-bottom:10px;">
+      <div><label class="sec-label">Ad Account ID</label><input class="fi" id="meta-accid" placeholder="act_123456789"></div>
+      <div><label class="sec-label">Access Token</label><input class="fi" id="meta-token" type="password" placeholder="EAA…"></div>
+    </div>
+    <div class="cs-code" style="margin-bottom:12px;">Meta for Developers → Graph API Explorer → generate User Token with ads_read + read_insights</div>
+    <button class="cbtn pri" onclick="connectMeta()">⚡ Connect Meta Ads</button>
+    <button class="cbtn sec" onclick="">Skip for now</button>
+  </div>
+
+  <div class="nav-row"><span class="step-ctr">4 / 7</span><div class="btn-row"><button class="btn ghost" onclick="goSec(3)">← Back</button><button class="btn pri" onclick="goSec(5)">Continue →</button></div></div>
+</div>
+
+<!-- S5: Inventory -->
+<div class="sec" id="sec-5">
+  <div class="sec-eyebrow">Step 5 of 7</div>
+  <div class="sec-title">Inventory &<br>operations</div>
+  <div class="sec-sub">Calculates stock runway and reorder triggers automatically.</div>
+  <div class="fg3">
+    <div><label class="sec-label">Total SKUs</label><input type="number" class="fi" placeholder="e.g. 8" oninput="sf('skus',this.value)"></div>
+    <div><label class="sec-label">Total units in stock</label><input type="number" class="fi" placeholder="e.g. 250" oninput="sf('stock',this.value)"></div>
+    <div><label class="sec-label">Units sold / day (avg)</label><input type="number" class="fi" placeholder="e.g. 4" oninput="sf('daily_rate',this.value)"></div>
+  </div>
+  <div class="fg2">
+    <div><label class="sec-label">Supplier lead time (days)</label><input type="number" class="fi" placeholder="e.g. 14" oninput="sf('lead_time',this.value)"></div>
+    <div><label class="sec-label">Fulfillment provider</label><input class="fi" placeholder="e.g. Bosta, Aramex, in-house" oninput="sf('fulfillment',this.value)"></div>
+  </div>
+  <div class="nav-row"><span class="step-ctr">5 / 7</span><div class="btn-row"><button class="btn ghost" onclick="goSec(4)">← Back</button><button class="btn pri" onclick="goSec(6)">Continue →</button></div></div>
+</div>
+
+<!-- S6: Goals -->
+<div class="sec" id="sec-6">
+  <div class="sec-eyebrow">Step 6 of 7</div>
+  <div class="sec-title">Goals &<br>context</div>
+  <div class="sec-sub">Your AI advisor uses this to prioritize what to focus on first.</div>
+  <label class="sec-label">Primary goal right now</label>
+  <div class="rc-grid c2">
+    <label class="rc" onclick="sr2(this,'goal','revenue')"><div class="rdot"></div><div><div class="rc-title">Grow revenue</div><div class="rc-sub">Scale orders and top-line sales</div></div></label>
+    <label class="rc" onclick="sr2(this,'goal','profit')"><div class="rdot"></div><div><div class="rc-title">Improve profitability</div><div class="rc-sub">Cut costs, raise margins</div></div></label>
+    <label class="rc" onclick="sr2(this,'goal','ads')"><div class="rdot"></div><div><div class="rc-title">Optimize ads</div><div class="rc-sub">Lower CPA, improve ROAS</div></div></label>
+    <label class="rc" onclick="sr2(this,'goal','cashflow')"><div class="rdot"></div><div><div class="rc-title">Fix cash flow</div><div class="rc-sub">Manage burn rate and runway</div></div></label>
+  </div>
+  <div class="divider"></div>
+  <div class="subsection">Current challenges</div>
+  <div class="ck" onclick="tc(this,'prob_cpa')"><div class="ck-box"><span class="ck-tick">✓</span></div><span class="ck-label">High CPA — ads cost too much per order</span></div>
+  <div class="ck" onclick="tc(this,'prob_margin')"><div class="ck-box"><span class="ck-tick">✓</span></div><span class="ck-label">Low margin — not enough profit per sale</span></div>
+  <div class="ck" onclick="tc(this,'prob_cancel')"><div class="ck-box"><span class="ck-tick">✓</span></div><span class="ck-label">High cancel / return rate</span></div>
+  <div class="ck" onclick="tc(this,'prob_stock')"><div class="ck-box"><span class="ck-tick">✓</span></div><span class="ck-label">Stock running out too fast</span></div>
+  <div class="fg1" style="margin-top:16px;"><label class="sec-label">Anything else CETARA should know?</label><textarea class="ft" placeholder="e.g. Seasonal spike in Ramadan, supplier in Turkey…" oninput="sf('notes',this.value)"></textarea></div>
+  <div class="nav-row"><span class="step-ctr">6 / 7</span><div class="btn-row"><button class="btn ghost" onclick="goSec(5)">← Back</button><button class="btn pri" onclick="goSec(7)">Continue →</button></div></div>
+</div>
+
+<!-- S7: Review & Score -->
+<div class="sec" id="sec-7">
+  <div class="sec-eyebrow">Step 7 of 7</div>
+  <div class="sec-title">Generate your<br>health score</div>
+  <div class="sec-sub">This is the final step. Once generated, you'll enter your dashboard.</div>
+  <div class="score-card" id="score-card" style="display:none;">
+    <div class="score-num" id="score-num">—</div>
+    <div class="score-lbl">Brand Health Score</div>
+    <div class="score-state" id="score-state-badge">Calculating…</div>
+    <div class="action-list" id="action-list"></div>
+  </div>
+  <div class="nav-row"><span class="step-ctr">7 / 7</span><div class="btn-row"><button class="btn ghost" onclick="goSec(6)">← Back</button><button class="btn pri" id="gen-btn" onclick="generateScore()">⚡ Generate Health Score</button></div></div>
+</div>
+
+</div><!-- /ob-main -->
+</div><!-- /screen-onboard -->
+
+<!-- ════════════════════ MAIN APP / DASHBOARD ════════════════════ -->
+<div class="screen" id="screen-app">
+  <div class="app-nav">
+    <div class="dn-logo">
+      <div class="auth-logo-text" style="font-size:18px;">CET<span>A</span>RA</div>
+    </div>
+    <div class="dn-brand" onclick="">
+      <div><div style="font-size:13px;font-weight:500;" id="dn-bname">Brand</div><div style="font-size:11px;color:var(--t2);margin-top:1px;" id="dn-btype">—</div></div>
+      <span style="color:var(--t3)">⇅</span>
+    </div>
+    <div class="dn-section">
+      <div class="dn-lbl">Overview</div>
+      <div class="ni active" onclick="navTo('dashboard',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Dashboard</div>
+    </div>
+    <div class="dn-section">
+      <div class="dn-lbl">Finance</div>
+      <div class="ni" onclick="navTo('expenses',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>Expenses<span class="nbadge" id="exp-badge">0</span></div>
+      <div class="ni" onclick="navTo('revenues',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>Revenues</div>
+      <div class="ni" onclick="navTo('pnl',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>P&amp;L Report</div>
+    </div>
+    <div class="dn-section">
+      <div class="dn-lbl">Operations</div>
+      <div class="ni" onclick="navTo('connections',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>Connections</div>
+      <div class="ni" onclick="navTo('inventory',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>Inventory</div>
+    </div>
+    <div class="dn-section">
+      <div class="dn-lbl">Records</div>
+      <div class="ni" onclick="navTo('history',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="12 8 12 12 14 14"/><path d="M3.05 11a9 9 0 109.19-8.69"/></svg>History</div>
+      <div class="ni" onclick="navTo('settings',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>Settings</div>
+    </div>
+    <div class="dn-footer">
+      <div class="user-row"><div class="avatar" id="dash-avatar">M</div><div style="min-width:0;"><div style="font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;" id="dash-uname">User</div><div style="font-size:11px;color:var(--gr);">Pro Plan</div></div></div>
+      <div style="margin-top:8px;padding:0 8px;"><button class="tbtn" style="width:100%;color:var(--t2);" onclick="signOut()">Sign out</button></div>
+    </div>
+  </div>
+
+  <div class="app-content">
+    <div class="topbar">
+      <div class="page-ttl" id="page-ttl">Dashboard</div>
+      <button class="tbtn pri" onclick="openAddModal()">+ Add Entry</button>
+    </div>
+    <div class="page-area">
+
+      <!-- Dashboard -->
+      <div class="dpage active" id="dp-dashboard">
+        <div id="hs-banner" style="display:none;background:var(--s1);border:1px solid rgba(0,230,122,.2);border-radius:var(--r);padding:14px 18px;margin-bottom:14px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+          <div><div style="font-size:10px;color:var(--t3);font-family:var(--fm);text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px;">Health Score</div><div style="font-family:var(--fd);font-size:32px;color:var(--gr)" id="hs-num">—</div></div>
+          <div style="width:1px;height:40px;background:var(--b1)"></div>
+          <div style="flex:1;min-width:160px;"><div style="font-size:13px;font-weight:500;" id="hs-state">—</div><div style="font-size:12px;color:var(--t2);margin-top:3px;" id="hs-sub">—</div></div>
+          <button class="tbtn" onclick="openAiModal()">Ask AI Advisor</button>
+        </div>
+        <div class="kpi-grid">
+          <div class="kc g"><div class="kc-lbl">Total Revenue</div><div class="kc-val g" id="d-rev">EGP 0</div><div class="kc-sub">All entries</div></div>
+          <div class="kc r"><div class="kc-lbl">Total Expenses</div><div class="kc-val r" id="d-exp">EGP 0</div><div class="kc-sub">All entries</div></div>
+          <div class="kc g"><div class="kc-lbl">Net Profit</div><div class="kc-val g" id="d-profit">EGP 0</div><div class="kc-sub">Revenue − Expenses</div></div>
+          <div class="kc b"><div class="kc-lbl">Net Margin</div><div class="kc-val b" id="d-margin">0%</div><div class="kc-sub">Profitability ratio</div></div>
+        </div>
+        <div class="col2">
+          <div class="card"><div class="ch"><span class="ct">Revenue vs Expenses</span></div><div class="cw tall"><canvas id="ch-revexp"></canvas></div></div>
+          <div class="card"><div class="ch"><span class="ct">Smart Insights</span></div><div id="insights-box"></div></div>
+        </div>
+        <div class="card"><div class="ch"><span class="ct">Recent Transactions</span></div>
+          <div class="tw"><table><thead><tr><th>Date</th><th>Description</th><th>Type</th><th>Amount</th></tr></thead><tbody id="recent-tbody"></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- Expenses -->
+      <div class="dpage" id="dp-expenses">
+        <div class="kpi-grid">
+          <div class="kc r"><div class="kc-lbl">Total Expenses</div><div class="kc-val r" id="e-total">EGP 0</div></div>
+          <div class="kc y"><div class="kc-lbl">Avg / Month</div><div class="kc-val y" id="e-avg">EGP 0</div></div>
+          <div class="kc r"><div class="kc-lbl">Top Category</div><div class="kc-val" style="font-size:15px" id="e-top">—</div></div>
+          <div class="kc b"><div class="kc-lbl">Entries</div><div class="kc-val b" id="e-count">0</div></div>
+        </div>
+        <div class="card"><div class="ch"><span class="ct">All Expenses</span><button class="tbtn pri" style="height:26px;font-size:11px;" onclick="openAddModal('expense')">+ Add</button></div>
+          <div class="tw"><table><thead><tr><th>Date</th><th>Description</th><th>Category</th><th>Amount</th><th></th></tr></thead><tbody id="exp-tbody"></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- Revenues -->
+      <div class="dpage" id="dp-revenues">
+        <div class="kpi-grid">
+          <div class="kc g"><div class="kc-lbl">Total Revenue</div><div class="kc-val g" id="r-total">EGP 0</div></div>
+          <div class="kc g"><div class="kc-lbl">Avg / Month</div><div class="kc-val g" id="r-avg">EGP 0</div></div>
+          <div class="kc b"><div class="kc-lbl">Top Source</div><div class="kc-val" style="font-size:15px" id="r-top">—</div></div>
+          <div class="kc b"><div class="kc-lbl">Entries</div><div class="kc-val b" id="r-count">0</div></div>
+        </div>
+        <div class="card"><div class="ch"><span class="ct">All Revenue</span><button class="tbtn pri" style="height:26px;font-size:11px;" onclick="openAddModal('revenue')">+ Add</button></div>
+          <div class="tw"><table><thead><tr><th>Date</th><th>Description</th><th>Category</th><th>Amount</th><th></th></tr></thead><tbody id="rev-tbody"></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- P&L -->
+      <div class="dpage" id="dp-pnl">
+        <div class="kpi-grid">
+          <div class="kc g"><div class="kc-lbl">Gross Revenue</div><div class="kc-val g" id="pnl-rev">—</div></div>
+          <div class="kc r"><div class="kc-lbl">Total Expenses</div><div class="kc-val r" id="pnl-exp">—</div></div>
+          <div class="kc g"><div class="kc-lbl">Net Profit</div><div class="kc-val g" id="pnl-net">—</div></div>
+          <div class="kc b"><div class="kc-lbl">Net Margin</div><div class="kc-val b" id="pnl-margin">—</div></div>
+        </div>
+        <div class="card"><div class="ch"><span class="ct">P&L Statement</span></div><div id="pnl-statement"></div></div>
+      </div>
+
+      <!-- Connections -->
+      <div class="dpage" id="dp-connections">
+        <div class="connect-box">
+          <div class="connect-hdr">
+            <div class="connect-ico shopify">S</div>
+            <div style="flex:1"><div class="connect-name">Shopify Store</div><div class="connect-sub" id="shopify-domain-display">Not connected</div></div>
+            <div style="display:flex;align-items:center;gap:6px;"><div class="sdot off" id="shopify-dot-2"></div><span style="font-size:11px;color:var(--t3);" id="shopify-status-2">Not connected</span></div>
+          </div>
+          <div class="fg2" style="margin-bottom:10px;">
+            <div><label class="sec-label">Store domain</label><input class="fi" id="shopify-domain-2" placeholder="yourstore.myshopify.com"></div>
+            <div><label class="sec-label">Admin API token</label><input class="fi" id="shopify-token-2" type="password" placeholder="shpat_…"></div>
+          </div>
+          <button class="cbtn pri" onclick="connectShopify(true)">⚡ Connect / Sync now</button>
+        </div>
+        <div class="connect-box">
+          <div class="connect-hdr">
+            <div class="connect-ico meta">f</div>
+            <div style="flex:1"><div class="connect-name">Meta Ads</div><div class="connect-sub" id="meta-acc-display">Not connected</div></div>
+            <div style="display:flex;align-items:center;gap:6px;"><div class="sdot off" id="meta-dot-2"></div><span style="font-size:11px;color:var(--t3);" id="meta-status-2">Not connected</span></div>
+          </div>
+          <div class="fg2" style="margin-bottom:10px;">
+            <div><label class="sec-label">Ad Account ID</label><input class="fi" id="meta-accid-2" placeholder="act_123456789"></div>
+            <div><label class="sec-label">Access Token</label><input class="fi" id="meta-token-2" type="password" placeholder="EAA…"></div>
+          </div>
+          <button class="cbtn pri" onclick="connectMeta(true)">⚡ Connect / Sync now</button>
+        </div>
+      </div>
+
+      <!-- Inventory -->
+      <div class="dpage" id="dp-inventory">
+        <div class="kpi-grid">
+          <div class="kc b"><div class="kc-lbl">Total SKUs</div><div class="kc-val b" id="inv-skus">—</div></div>
+          <div class="kc g"><div class="kc-lbl">Days Remaining</div><div class="kc-val g" id="inv-days">—</div></div>
+          <div class="kc y"><div class="kc-lbl">Reorder Point</div><div class="kc-val y" id="inv-reorder">—</div></div>
+        </div>
+        <div class="card"><div class="ch"><span class="ct">Inventory Status</span></div><div id="inv-alerts"></div></div>
+      </div>
+
+      <!-- History -->
+      <div class="dpage" id="dp-history">
+        <div class="card"><div class="ch"><span class="ct">All Transactions</span><span style="font-size:11px;color:var(--t3)" id="hist-count">0 entries</span></div>
+          <div class="tw"><table><thead><tr><th>Date</th><th>Type</th><th>Description</th><th>Category</th><th>Amount</th><th></th></tr></thead><tbody id="hist-tbody"></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- Settings -->
+      <div class="dpage" id="dp-settings">
+        <div class="col2">
+          <div class="card"><div class="ch"><span class="ct">Brand Profile</span></div>
+            <div class="sr"><span class="sr-k">Brand name</span><span class="sr-v" id="set-bname">—</span></div>
+            <div class="sr"><span class="sr-k">Industry</span><span class="sr-v" id="set-ind">—</span></div>
+            <div class="sr"><span class="sr-k">Sales model</span><span class="sr-v" id="set-mod">—</span></div>
+            <div class="sr"><span class="sr-k">Goal</span><span class="sr-v" id="set-goal">—</span></div>
+          </div>
+          <div class="card"><div class="ch"><span class="ct">Account</span></div>
+            <div class="sr"><span class="sr-k">Email</span><span class="sr-v" id="set-email">—</span></div>
+            <div style="margin-top:12px;display:flex;flex-direction:column;gap:8px;">
+              <button class="tbtn" onclick="setupPin()">🔐 Set up PIN quick-login</button>
+              <button class="tbtn" onclick="exportData()">⬇ Export Data (JSON)</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /page-area -->
+  </div><!-- /app-content -->
+
+  <!-- mobile bottom nav -->
+  <div class="mobile-nav">
+    <div class="mn-item active" onclick="navTo('dashboard',this,true)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg><span>Home</span></div>
+    <div class="mn-item" onclick="navTo('expenses',this,true)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg><span>Expenses</span></div>
+    <div class="mn-item" onclick="navTo('revenues',this,true)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg><span>Revenue</span></div>
+    <div class="mn-item" onclick="navTo('connections',this,true)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg><span>Connect</span></div>
+    <div class="mn-item" onclick="navTo('settings',this,true)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg><span>Settings</span></div>
+  </div>
+
+  <!-- AI Advisor floating button -->
+  <button class="ai-fab" onclick="openAiModal()" title="Ask AI Advisor">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 100 20 10 10 0 000-20z"/><path d="M9.5 9.5a2.5 2.5 0 015 0c0 1.5-2.5 2-2.5 3.5"/><circle cx="12" cy="17" r=".5" fill="currentColor"/></svg>
+  </button>
+</div><!-- /screen-app -->
+
+<!-- ════════════════════ ADD ENTRY MODAL ════════════════════ -->
+<div class="ov" id="add-modal">
+  <div class="modal">
+    <div class="mhdr"><div class="mttl">Add Entry</div><div class="mx" onclick="closeModal('add-modal')">✕</div></div>
+    <div class="fg2">
+      <div><label class="sec-label">Type</label><select class="fs" id="ent-type"><option value="expense">Expense</option><option value="revenue">Revenue</option></select></div>
+      <div><label class="sec-label">Date</label><input type="date" class="fi" id="ent-date"></div>
+    </div>
+    <div class="fg1"><label class="sec-label">Description</label><input class="fi" id="ent-desc" placeholder="e.g. Meta Ads spend — June"></div>
+    <div class="fg2">
+      <div><label class="sec-label">Category</label><select class="fs" id="ent-cat"><option>Production</option><option>Marketing & Content</option><option>Delivery</option><option>Fabric & Materials</option><option>Packaging</option><option>Misc</option><option>Shopify Orders</option><option>Wholesale</option><option>Events</option><option>Other</option></select></div>
+      <div><label class="sec-label">Amount (EGP)</label><input type="number" class="fi" id="ent-amt" placeholder="0"></div>
+    </div>
+    <div class="fg1"><label class="sec-label">Notes</label><input class="fi" id="ent-notes" placeholder="Optional"></div>
+    <div class="mactions"><button class="btn" onclick="closeModal('add-modal')">Cancel</button><button class="btn pri" onclick="saveEntry()">Save Entry</button></div>
+  </div>
+</div>
+
+<!-- ════════════════════ AI ADVISOR MODAL ════════════════════ -->
+<div class="ov" id="ai-modal">
+  <div class="modal wide">
+    <div class="mhdr">
+      <div class="mttl">🤖 AI Advisor</div>
+      <div class="mx" onclick="closeModal('ai-modal')">✕</div>
+    </div>
+    <div class="ai-chat">
+      <div class="ai-msgs" id="ai-msgs"></div>
+      <div class="ai-suggest" id="ai-suggest">
+        <div class="ai-chip" onclick="aiAsk('What is my biggest risk right now?')">Biggest risk?</div>
+        <div class="ai-chip" onclick="aiAsk('How do I improve my margin?')">Improve margin</div>
+        <div class="ai-chip" onclick="aiAsk('What should I focus on this week?')">This week's focus</div>
+        <div class="ai-chip" onclick="aiAsk('Analyze my ad spend efficiency')">Ad efficiency</div>
+      </div>
+      <div class="ai-input-row">
+        <textarea class="ai-input" id="ai-input" rows="1" placeholder="Ask about your brand…" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();aiSend();}"></textarea>
+        <button class="ai-send" onclick="aiSend()">→</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════ PIN SETUP MODAL ════════════════════ -->
+<div class="ov" id="pin-setup-modal">
+  <div class="modal">
+    <div class="mhdr"><div class="mttl">Set up PIN</div><div class="mx" onclick="closeModal('pin-setup-modal')">✕</div></div>
+    <p style="font-size:13px;color:var(--t2);margin-bottom:16px;">Choose a 4-digit PIN for quick login on this device. Your email and password still work normally.</p>
+    <input class="fi" type="password" inputmode="numeric" maxlength="4" id="new-pin-input" placeholder="Enter 4 digits" style="text-align:center;font-size:20px;letter-spacing:8px;">
+    <div class="mactions"><button class="btn" onclick="closeModal('pin-setup-modal')">Cancel</button><button class="btn pri" onclick="savePinSetup()">Save PIN</button></div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
